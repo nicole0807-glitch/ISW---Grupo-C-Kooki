@@ -21,6 +21,14 @@ class SupabaseService {
     return _client.storage.from('avatars').getPublicUrl(fileName);
   }
 
+  Future<void> signOut() async {
+    try {
+      await _client.auth.signOut();
+    } catch (e) {
+      throw Exception("Error en la comunicación con el servidor: $e");
+    }
+  }
+
   Future<void> upsertProfile(Map<String, dynamic> data) async {
     await _client.from('Profile').upsert(data);
   }
