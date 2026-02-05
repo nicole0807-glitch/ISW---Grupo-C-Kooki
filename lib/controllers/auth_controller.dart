@@ -28,17 +28,17 @@ class AuthController {
   }) async {
     try {
       final authResponse = await _service.signUp(email, password);
-      final userId = authResponse.user?.id;
+      final user_id = authResponse.user?.id;
 
-      if (userId != null) {
+      if (user_id != null) {
         String avatarUrl = ""; 
         
         if (imageFile != null) {
-          avatarUrl = await _service.uploadAvatar(userId, imageFile);
+          avatarUrl = await _service.uploadAvatar(user_id, imageFile);
         }
 
         await _service.upsertProfile({
-          'user_id': userId,
+          'user_id': user_id,
           'username': username,
           'email': email,
           'role_id': 1, 

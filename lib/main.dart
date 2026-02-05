@@ -22,7 +22,7 @@ class NutveApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Nutve App',
+      title: 'Kooki',
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: AppColors.nutveDarkGreen,
