@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../controllers/auth_controller.dart';
-import '../../main.dart'; 
 import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {

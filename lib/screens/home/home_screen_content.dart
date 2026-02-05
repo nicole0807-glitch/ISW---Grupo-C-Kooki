@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nutve_application/screens/recipe/widgets/quick_bite_card.dart';
+import 'package:kooki/screens/recipe/widgets/quick_bite_card.dart';
 import '../../utils/app_colors.dart';
 import '../../services/recipe_service.dart'; // Importamos el servicio
 import '../../models/recipe_model.dart';   // Importamos el modelo

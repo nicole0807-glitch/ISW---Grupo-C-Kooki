@@ -1,8 +1,9 @@
 // ignore: unused_import
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kooki/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:nutve_application/main.dart';
+
 
 void main() {
   // Esto asegura que el entorno de tests esté listo para inicializar servicios externos
@@ -21,7 +22,6 @@ void main() {
     // 3. Verificamos que la app existe
     expect(find.byType(NutveApp), findsOneWidget);
     
-    // Nota: He quitado el tester.tap(find.byIcon(Icons.add)) 
-    // porque tu NutveApp probablemente no tiene ese icono de suma.
+
   });
 }
