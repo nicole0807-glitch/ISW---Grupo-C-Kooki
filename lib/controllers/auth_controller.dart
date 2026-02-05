@@ -8,6 +8,16 @@ class AuthController {
     return _service.currentSession != null;
   }
 
+   Future<bool> logout() async {
+    try {
+      await _service.signOut();
+      return true; 
+    } catch (e) {
+      print(e);
+      return false; 
+    }
+  }
+
   Future<bool> registerUser({
     required String email,
     required String password,
