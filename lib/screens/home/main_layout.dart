@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import 'home_screen_content.dart';
-import '../profile_screen.dart';
+import '../Profile/profile_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
