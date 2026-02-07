@@ -114,7 +114,7 @@ class _CookingSkillScreenState extends State<CookingSkillScreen> {
                           ),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),

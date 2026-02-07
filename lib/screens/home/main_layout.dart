@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import 'home_screen_content.dart';
-import '../profile_screen.dart';
+import '../Profile/profile_screen.dart';
 import '../pantry/pantry_screen.dart';
 
 class MainLayout extends StatefulWidget {
@@ -36,7 +36,7 @@ class _MainLayoutState extends State<MainLayout> {
             ),
             const SizedBox(width: 10),
             const Text(
-              "NUTVE",
+              "Kooki",
               style: TextStyle(
                 color: AppColors.nutveDarkGreen,
                 fontWeight: FontWeight.bold,
