@@ -11,6 +11,34 @@ class SupabaseService {
     return await _client.auth.signUp(email: email, password: password);
   }
 
+  Future<bool> isUserAdmin() async {
+    final user = _client.auth.currentUser;
+    
+    // 1. Si no hay usuario logueado, no es admin
+    if (user == null) return false;
+
+    try {
+      // 2. Hacemos un JOIN entre Profile y Role para obtener el nombre del rol
+      // Supabase detecta la relación por la Foreign Key automáticamente
+      final response = await _client
+          .from('Profile')
+          .select('Role(name)') // Traemos el campo 'name' de la tabla 'Role'
+          .eq('user_id', user.id)
+          .single();
+
+      // La respuesta viene anidada: { "Role": { "name": "admin" } }
+      final roleData = response['Role'] as Map<String, dynamic>?;
+      final roleName = roleData?['name'] as String?;
+
+      // 3. Comparamos (asegúrate que en tu BD el rol se llame 'admin' o 'Admin')
+      return roleName?.toLowerCase() == 'admin'; 
+      
+    } catch (e) {
+      print("Error verificando admin: $e");
+      return false;
+    }
+  }
+
   Future<String> uploadAvatar(String userId, File imageFile) async {
     final fileName = '$userId/profile.png';
     await _client.storage.from('avatars').upload(
