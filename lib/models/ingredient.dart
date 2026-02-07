@@ -1,130 +1,123 @@
-import 'ingredient_master.dart';
-
-/// Modelo para la tabla Pantry (despensa del usuario)
 class Ingredient {
-  final int? pantryId;  // PK de Pantry
-  final String userId;
-  final int masterIngredientId;  // FK a tabla Ingredient
-  final String? name;  // Deprecado, ahora viene de la relación
+  final int? pantryId;          
+  final int ingredientId;        // ingredient_id (FK a Ingredient master)
+  final String userId;           // user_id (FK a Profile)
+  final String name;             // Viene del JOIN con Ingredient
   final String category;
-  final double quantity;
+  final String quantity;         // measure_type (puede ser "100 g", "2 L", etc)
   final String unit;
-  final DateTime? expirationDate;
+  final DateTime? expDate;
   final String? photoUrl;
-  final DateTime? createdAt;
-  
-  // Relación con ingrediente maestro (se llena con JOIN)
-  final IngredientMaster? ingredientMaster;
+  final DateTime? boughtDate;
 
   Ingredient({
     this.pantryId,
+    required this.ingredientId,
     required this.userId,
-    required this.masterIngredientId,
-    this.name,
+    required this.name,
     required this.category,
     required this.quantity,
     required this.unit,
-    this.expirationDate,
+    this.expDate,
     this.photoUrl,
-    this.createdAt,
-    this.ingredientMaster,
+    this.boughtDate,
   });
 
-  // Getters de compatibilidad
-  int? get id => pantryId;
-  String? get ingredientId => pantryId?.toString();
+  // Getters para compatibilidad con código existente
+  String? get id => pantryId?.toString();
+  DateTime? get expirationDate => expDate;
   String? get imageUrl => photoUrl;
-  
-  // Nombre del ingrediente (prioriza el de la relación)
-  String get displayName => ingredientMaster?.name ?? name ?? 'Unknown';
+  // Nombre para mostrar (compatibilidad con UI que espera `displayName`)
+  String get displayName => name;
+  DateTime? get createdAt => boughtDate;
+  String get status => 'Fresh';
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
+    // El JOIN trae: Pantry.*, Ingredient(name)
+    final ingredientMaster = json['Ingredient'];
+    
     return Ingredient(
-      pantryId: json['ingredient_id'] as int?,
+      pantryId: json['pantry_id'] as int?,
+      ingredientId: json['ingredient_id'] as int,
       userId: json['user_id'] as String,
-      masterIngredientId: json['master_ingredient_id'] as int? ?? 0,
-      name: json['name'] as String?,
+      name: ingredientMaster != null 
+          ? (ingredientMaster['name'] as String)
+          : 'Desconocido',
       category: json['category'] as String? ?? 'Other',
-      quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
-      unit: json['unit'] as String? ?? 'unit',
-      expirationDate: json['expirationDate'] != null
-          ? DateTime.parse(json['expirationDate'] as String)
+      quantity: json['quantity']?.toString() ?? '0',
+      unit: json['unit'] as String? ?? 'g',
+      expDate: json['exp_date'] != null
+          ? DateTime.parse(json['exp_date'] as String)
           : null,
-      photoUrl: json['imageUrl'] as String?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
-          : null,
-      // Si hay datos de JOIN, crear el objeto relacionado
-      ingredientMaster: json['Ingredient'] != null
-          ? IngredientMaster.fromJson(json['Ingredient'])
+      photoUrl: json['photo_url'] as String?,
+      boughtDate: json['bought_date'] != null
+          ? DateTime.parse(json['bought_date'] as String)
           : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (pantryId != null) 'ingredient_id': pantryId,
+      if (pantryId != null) 'pantry_id': pantryId,
+      'ingredient_id': ingredientId,
       'user_id': userId,
-      'master_ingredient_id': masterIngredientId,
       'category': category,
-      'quantity': quantity,
+      'quantity': quantity,  // Enviar como string: "100 g"
       'unit': unit,
-      if (expirationDate != null) 
-        'expirationDate': expirationDate!.toIso8601String(),
-      if (photoUrl != null) 'imageUrl': photoUrl,
-      // No enviamos 'name' porque viene de la tabla maestra
+      if (expDate != null) 'exp_date': expDate!.toIso8601String(),
+      if (photoUrl != null) 'photo_url': photoUrl,
+      if (boughtDate != null) 'bought_date': boughtDate!.toIso8601String(),
     };
   }
 
   Ingredient copyWith({
     int? pantryId,
+    int? ingredientId,
     String? userId,
-    int? masterIngredientId,
     String? name,
     String? category,
-    double? quantity,
+    String? quantity,
     String? unit,
-    DateTime? expirationDate,
+    DateTime? expDate,
     String? photoUrl,
-    DateTime? createdAt,
-    IngredientMaster? ingredientMaster,
+    DateTime? boughtDate,
   }) {
     return Ingredient(
       pantryId: pantryId ?? this.pantryId,
+      ingredientId: ingredientId ?? this.ingredientId,
       userId: userId ?? this.userId,
-      masterIngredientId: masterIngredientId ?? this.masterIngredientId,
       name: name ?? this.name,
       category: category ?? this.category,
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
-      expirationDate: expirationDate ?? this.expirationDate,
+      expDate: expDate ?? this.expDate,
       photoUrl: photoUrl ?? this.photoUrl,
-      createdAt: createdAt ?? this.createdAt,
-      ingredientMaster: ingredientMaster ?? this.ingredientMaster,
+      boughtDate: boughtDate ?? this.boughtDate,
     );
   }
 
-  // Métodos de utilidad
   bool get isExpired {
-    if (expirationDate == null) return false;
-    return expirationDate!.isBefore(DateTime.now());
+    if (expDate == null) return false;
+    return expDate!.isBefore(DateTime.now());
   }
 
   bool get expiresSoon {
-    if (expirationDate == null) return false;
-    final daysUntilExpiration = expirationDate!.difference(DateTime.now()).inDays;
+    if (expDate == null) return false;
+    final daysUntilExpiration = expDate!.difference(DateTime.now()).inDays;
     return daysUntilExpiration <= 3 && daysUntilExpiration >= 0;
   }
 
   int? get daysUntilExpiration {
-    if (expirationDate == null) return null;
-    return expirationDate!.difference(DateTime.now()).inDays;
+    if (expDate == null) return null;
+    return expDate!.difference(DateTime.now()).inDays;
   }
 
-  String get status {
-    if (isExpired) return 'Expired';
-    if (expiresSoon) return 'Expiring Soon';
-    if (quantity < 100) return 'Low Stock';
-    return 'Fresh';
+  // Parsear quantity numérica (por si quantity = "100 g")
+  double get numericQuantity {
+    final match = RegExp(r'[\d.]+').firstMatch(quantity);
+    if (match != null) {
+      return double.tryParse(match.group(0)!) ?? 0;
+    }
+    return double.tryParse(quantity) ?? 0;
   }
 }

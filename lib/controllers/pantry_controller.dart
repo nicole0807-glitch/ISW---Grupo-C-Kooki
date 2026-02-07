@@ -105,27 +105,28 @@ class PantryController extends GetxController {
   }
 
   /// Delete ingredient
-  Future<bool> deleteIngredient(String ingredientId) async {
-    try {
-      await _pantryService.deleteIngredient(ingredientId);
-      allIngredients.removeWhere((item) => item.ingredientId == ingredientId);
-      applyFilters();
-      
-      Get.snackbar(
-        'Éxito',
-        'Ingrediente eliminado',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return true;
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return false;
-    }
+  /// Delete ingredient
+Future<bool> deleteIngredient(String pantryId) async {  // ← Cambiar nombre del parámetro
+  try {
+    await _pantryService.deleteIngredient(pantryId);
+    allIngredients.removeWhere((item) => item.id == pantryId);  // ← Usar .id (que es pantryId)
+    applyFilters();
+    
+    Get.snackbar(
+      'Éxito',
+      'Ingrediente eliminado',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return true;
+  } catch (e) {
+    Get.snackbar(
+      'Error',
+      e.toString(),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return false;
   }
+}
 
   /// Set category filter
   void setCategory(String category) {

@@ -6,6 +6,7 @@ class SupabaseService {
 
   Session? get currentSession => _client.auth.currentSession;
   User? get currentUser => _client.auth.currentUser;
+  SupabaseClient get supabase => _client;
 
   Future<AuthResponse> signUp(String email, String password) async {
     return await _client.auth.signUp(email: email, password: password);

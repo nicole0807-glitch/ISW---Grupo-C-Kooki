@@ -64,28 +64,29 @@ class IngredientCard extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, PantryController controller) {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Delete Ingredient'),
-        content: Text('Are you sure you want to delete ${ingredient.displayName}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Get.back();
-              controller.deleteIngredient(ingredient.ingredientId!);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
+ void _confirmDelete(BuildContext context, PantryController controller) {
+  Get.dialog(
+    AlertDialog(
+      title: const Text('Delete Ingredient'),
+      content: Text('Are you sure you want to delete ${ingredient.name}?'),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            Get.back();
+            // ← CAMBIO: Convertir a String
+            controller.deleteIngredient(ingredient.id!);  // ingredient.id ya es String
+          },
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
