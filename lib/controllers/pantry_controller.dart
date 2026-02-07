@@ -27,15 +27,15 @@ class PantryController extends GetxController {
     loadIngredients();
   }
 
-  String? get user_id => Supabase.instance.client.auth.currentUser?.id;
+  String? get userId => Supabase.instance.client.auth.currentUser?.id;
 
   /// Load all ingredients
   Future<void> loadIngredients() async {
-    if (user_id == null) return;
+    if (userId == null) return;
 
     try {
       isLoading.value = true;
-      allIngredients = await _pantryService.getIngredients(user_id!);
+      allIngredients = await _pantryService.getIngredients(userId!);
       applyFilters();
     } catch (e) {
       Get.snackbar(
@@ -80,7 +80,7 @@ class PantryController extends GetxController {
       isLoading.value = true;
       await _pantryService.updateIngredient(ingredient);
       
-      final index = allIngredients.indexWhere((i) => i.ingredient_id == ingredient.ingredient_id);
+      final index = allIngredients.indexWhere((i) => i.id == ingredient.id);
       if (index != -1) {
         allIngredients[index] = ingredient;
         applyFilters();
@@ -105,10 +105,10 @@ class PantryController extends GetxController {
   }
 
   /// Delete ingredient
-  Future<bool> deleteIngredient(String ingredient_id) async {
+  Future<bool> deleteIngredient(String ingredientId) async {
     try {
-      await _pantryService.deleteIngredient(ingredient_id);
-      allIngredients.removeWhere((item) => item.ingredient_id == ingredient_id);
+      await _pantryService.deleteIngredient(ingredientId);
+      allIngredients.removeWhere((item) => item.ingredientId == ingredientId);
       applyFilters();
       
       Get.snackbar(
@@ -146,14 +146,16 @@ class PantryController extends GetxController {
       final categoryMatch = selectedCategory.value == 'All Items' ||
           ingredient.category == selectedCategory.value;
 
-      // Search filter
+      // Search filter (ahora busca en displayName)
       final searchMatch = searchQuery.value.isEmpty ||
-          ingredient.name.toLowerCase().contains(searchQuery.value.toLowerCase());
+          ingredient.displayName
+              .toLowerCase()
+              .contains(searchQuery.value.toLowerCase());
 
       return categoryMatch && searchMatch;
     }).toList();
 
-    update(); // Notificar cambios a GetBuilder
+    update();
   }
 
   /// Get total count

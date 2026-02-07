@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ingredient.dart';
 
@@ -7,60 +6,69 @@ class PantryService {
   final SupabaseClient _supabase = Supabase.instance.client;
   static const String _tableName = 'Pantry';
 
-  /// Get all ingredients for a user
-  Future<List<Ingredient>> getIngredients(String user_id) async {
+  /// Get all ingredients with JOIN to master table
+  Future<List<Ingredient>> getIngredients(String userId) async {
     try {
+      print('🔵 Cargando ingredientes del usuario con JOIN...');
+      
+      // JOIN con la tabla Ingredient para traer el nombre
       final response = await _supabase
           .from(_tableName)
-          .select()
-          .eq('user_id', user_id)
-          .order('created_at', ascending: false);
+          .select('*, Ingredient(*)')  // ← JOIN con tabla maestra
+          .eq('user_id', userId)
+          .order('ingredient_id', ascending: false);
 
-      return (response as List)
+      print('🟢 Respuesta raw: $response');
+
+      final ingredients = (response as List)
           .map((item) => Ingredient.fromJson(item))
           .toList();
+
+      print('🟢 ${ingredients.length} ingredientes cargados');
+      return ingredients;
     } catch (e) {
+      print('🔴 Error al cargar ingredientes: $e');
       throw Exception('Error al cargar ingredientes: $e');
     }
   }
 
-  /// Get ingredients by category
-  Future<List<Ingredient>> getIngredientsByCategory(
-    String user_id,
-    String category,
-  ) async {
-    try {
-      final response = await _supabase
-          .from(_tableName)
-          .select()
-          .eq('user_id', user_id)
-          .eq('category', category)
-          .order('created_at', ascending: false);
-
-      return (response as List)
-          .map((item) => Ingredient.fromJson(item))
-          .toList();
-    } catch (e) {
-      throw Exception('Error al filtrar por categoría: $e');
-    }
-  }
-
-  /// Add new ingredient
+  /// Add new ingredient (ahora guarda el ID del ingrediente maestro)
   Future<Ingredient> addIngredient(Ingredient ingredient) async {
     try {
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🔵 AGREGANDO ingrediente a Pantry');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      final currentUser = _supabase.auth.currentUser;
+      print('👤 Usuario: ${currentUser?.id}');
+      
+      final jsonData = ingredient.toJson();
+      print('📦 Datos a insertar:');
+      jsonData.forEach((key, value) {
+        print('   $key: $value');
+      });
+      
       final response = await _supabase
           .from(_tableName)
-          .insert(ingredient.toJson())
-          .select()
+          .insert(jsonData)
+          .select('*, Ingredient(*)')  // ← JOIN en el INSERT también
           .single();
 
-      // Debug: print full response from Supabase to help trace issues
-      // (remove or guard these prints in production)
-      print('Supabase insert response: $response');
-
+      print('✅ Ingrediente agregado exitosamente');
+      print('📥 Respuesta: $response');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       return Ingredient.fromJson(response);
-    } catch (e) {
-      print('Error en addIngredient: $e');
+      
+    } on PostgrestException catch (e) {
+      print('❌ PostgrestException:');
+      print('   Code: ${e.code}');
+      print('   Message: ${e.message}');
+      print('   Details: ${e.details}');
+      rethrow;
+    } catch (e, stack) {
+      print('❌ Error general: $e');
+      print('Stack: $stack');
       rethrow;
     }
   }
@@ -71,62 +79,42 @@ class PantryService {
       await _supabase
           .from(_tableName)
           .update(ingredient.toJson())
-          .eq('ingredient_id', ingredient.ingredient_id!);
+          .eq('ingredient_id', ingredient.pantryId!);
     } catch (e) {
-      throw Exception('Error al actualizar ingrediente: $e');
+      throw Exception('Error al actualizar: $e');
     }
   }
 
   /// Delete ingredient
-  Future<void> deleteIngredient(String ingredient_id) async {
+  Future<void> deleteIngredient(String ingredientId) async {
     try {
-      await _supabase.from(_tableName).delete().eq('ingredient_id', ingredient_id);
+      await _supabase
+          .from(_tableName)
+          .delete()
+          .eq('ingredient_id', int.parse(ingredientId));
     } catch (e) {
-      throw Exception('Error al eliminar ingrediente: $e');
+      throw Exception('Error al eliminar: $e');
     }
   }
 
   /// Search ingredients
   Future<List<Ingredient>> searchIngredients(
-    String user_id,
+    String userId,
     String query,
   ) async {
     try {
       final response = await _supabase
           .from(_tableName)
-          .select()
-          .eq('user_id', user_id)
-          .ilike('name', '%$query%')
-          .order('created_at', ascending: false);
+          .select('*, Ingredient(*)')
+          .eq('user_id', userId)
+          .or('name.ilike.%$query%')
+          .order('ingredient_id', ascending: false);
 
       return (response as List)
           .map((item) => Ingredient.fromJson(item))
           .toList();
     } catch (e) {
       throw Exception('Error al buscar: $e');
-    }
-  }
-
-  /// Upload ingredient image
-  Future<String?> uploadIngredientImage(
-    String user_id,
-    String ingredient_id,
-    String imagePath,
-  ) async {
-    try {
-      final fileName = '$user_id/$ingredient_id.jpg';
-      await _supabase.storage.from('ingredient_images').upload(
-            fileName,
-            File(imagePath),
-            fileOptions: const FileOptions(upsert: true),
-          );
-
-      return _supabase.storage
-          .from('ingredient_images')
-          .getPublicUrl(fileName);
-    } catch (e) {
-      print('Error al subir imagen: $e');
-      return null;
     }
   }
 }

@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/ingredient.dart';
+import '../../models/ingredient_master.dart';
 import '../../controllers/pantry_controller.dart';
+import '../../providers/ingredient_master_provider.dart';
+import 'widgets/ingredient_search_dropdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddIngredientScreen extends StatefulWidget {
-  final Ingredient? ingredient; // Si viene lleno, es edición
+  final Ingredient? ingredient;
 
   const AddIngredientScreen({super.key, this.ingredient});
 
@@ -17,9 +20,9 @@ class AddIngredientScreen extends StatefulWidget {
 
 class _AddIngredientScreenState extends State<AddIngredientScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _quantityController = TextEditingController();
   
+  IngredientMaster? _selectedIngredient;  // ← CAMBIO PRINCIPAL
   String _selectedCategory = 'Dairy';
   String _selectedUnit = 'Grams (g)';
   DateTime? _expirationDate;
@@ -46,19 +49,21 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Inicializar el provider de ingredientes maestros
+    Get.put(IngredientMasterProvider());
+    
     if (widget.ingredient != null) {
-      // Modo edición
-      _nameController.text = widget.ingredient!.name;
       _quantityController.text = widget.ingredient!.quantity.toString();
       _selectedCategory = widget.ingredient!.category;
       _selectedUnit = widget.ingredient!.unit;
       _expirationDate = widget.ingredient!.expirationDate;
+      _selectedIngredient = widget.ingredient!.ingredientMaster;
     }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
     _quantityController.dispose();
     super.dispose();
   }
@@ -98,79 +103,79 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
     }
   }
 
-  Future<void> _saveIngredient() async {
-    print("1. Iniciando guardado..."); // Diagnóstico
-    if (!_formKey.currentState!.validate()) {
-      print("2. Formulario inválido");
-      return;
-    }
+ Future<void> _saveIngredient() async {
+  if (!_formKey.currentState!.validate()) return;
+  
+  if (_selectedIngredient == null) {
+    Get.snackbar(
+      'Error',
+      'Please select an ingredient from the list',
+      backgroundColor: Colors.red[100],
+    );
+    return;
+  }
 
-    setState(() => _isLoading = true);
-    print("3. Formulario válido, buscando controlador...");
+  setState(() => _isLoading = true);
 
+  try {
+    print('🔵 ═══════════════════════════════════════');
+    print('🔵 VERIFICANDO AUTENTICACIÓN');
+    print('🔵 ═══════════════════════════════════════');
+    
     final controller = Get.find<PantryController>();
-    final user = Supabase.instance.client.auth.currentUser;
+    
+    // ← AGREGAR ESTOS PRINTS
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentSession = Supabase.instance.client.auth.currentSession;
+    
+    print('👤 Current User: ${currentUser?.id}');
+    print('📧 Email: ${currentUser?.email}');
+    print('🎫 Session: ${currentSession != null ? "ACTIVA" : "INACTIVA"}');
+    print('🔵 ═══════════════════════════════════════');
+    
+    final userId = currentUser?.id;
 
-    if (user == null) {
-      print("4. Error: No hay sesión de usuario");
-      Get.snackbar('Error', 'Debes iniciar sesión para guardar');
+    if (userId == null) {
+      print('❌ USER ID ES NULL - Usuario no autenticado');
+      Get.snackbar('Error', 'Usuario no autenticado');
       setState(() => _isLoading = false);
       return;
     }
+    
+    print('✅ Usuario autenticado: $userId');
 
-    // Preparar y guardar el ingrediente usando la lógica existente
-    try {
-      final ingredient = Ingredient(
-        ingredient_id: widget.ingredient?.ingredient_id,
-        user_id: user.id,
-        name: _nameController.text.trim(),
-        category: _selectedCategory,
-        quantity: double.parse(_quantityController.text.trim()),
-        unit: _selectedUnit,
-        expirationDate: _expirationDate,
-        imageUrl: widget.ingredient?.imageUrl, // Mantener URL anterior si existe
-        status: _calculateStatus(),
-        createdAt: widget.ingredient?.createdAt ?? DateTime.now(),
-        
-      );
+    final ingredient = Ingredient(
+      pantryId: widget.ingredient?.pantryId,
+      userId: userId,
+      masterIngredientId: _selectedIngredient!.ingredientId,
+      category: _selectedCategory,
+      quantity: double.parse(_quantityController.text.trim()),
+      unit: _selectedUnit,
+      expirationDate: _expirationDate,
+      photoUrl: widget.ingredient?.photoUrl,
+      createdAt: widget.ingredient?.createdAt,
+      ingredientMaster: _selectedIngredient,
+    );
 
-      bool success;
-      if (widget.ingredient == null) {
-        // Agregar nuevo
-        success = await controller.addIngredient(ingredient);
-      } else {
-        // Actualizar existente
-        success = await controller.updateIngredient(ingredient);
-      }
+    bool success;
+    if (widget.ingredient == null) {
+      success = await controller.addIngredient(ingredient);
+    } else {
+      success = await controller.updateIngredient(ingredient);
+    }
 
-      if (success) {
-        Get.back(); // Regresar a pantalla anterior
-      }
-    } catch (e) {
-      Get.snackbar('Error', e.toString());
-    } finally {
+    if (success && mounted) {
+      Get.back();
+    }
+  } catch (e) {
+    print('❌ Error en _saveIngredient: $e');
+    Get.snackbar('Error', e.toString());
+  } finally {
+    if (mounted) {
       setState(() => _isLoading = false);
     }
   }
-
-  String _calculateStatus() {
-    if (_expirationDate == null) return 'Fresh';
-    
-    final daysUntilExpiration = _expirationDate!.difference(DateTime.now()).inDays;
-    
-    if (daysUntilExpiration <= 0) {
-      return 'Expired';
-    } else if (daysUntilExpiration <= 3) {
-      return 'Expiring Soon';
-    } else {
-      final quantity = double.tryParse(_quantityController.text) ?? 0;
-      if (quantity < 100) {
-        return 'Low Stock';
-      }
-      return 'Fresh';
-    }
-  }
-
+}
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.ingredient != null;
@@ -226,11 +231,11 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                         borderRadius: BorderRadius.circular(10),
                         child: Image.file(_imageFile!, fit: BoxFit.cover),
                       )
-                    : widget.ingredient?.imageUrl != null
+                    : widget.ingredient?.photoUrl != null
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: Image.network(
-                              widget.ingredient!.imageUrl!,
+                              widget.ingredient!.photoUrl!,
                               fit: BoxFit.cover,
                             ),
                           )
@@ -263,43 +268,12 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Ingredient Name
-            const Text(
-              'Ingredient Name',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                hintText: 'e.g. Avocado, Spinach, Milk',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF4CAF50)),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter ingredient name';
-                }
-                return null;
+            IngredientSearchDropdown(
+              initialIngredient: _selectedIngredient,
+              onIngredientSelected: (selected) {
+                setState(() {
+                  _selectedIngredient = selected;
+                });
               },
             ),
             const SizedBox(height: 20),
@@ -326,15 +300,15 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                         decoration: InputDecoration(
                           hintText: '0',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey[300]!),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey[300]!),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFF4CAF50)),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -373,15 +347,15 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                         value: _selectedUnit,
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey[300]!),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey[300]!),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFF4CAF50)),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -392,7 +366,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                         items: _units.map((unit) {
                           return DropdownMenuItem(
                             value: unit,
-                            child: Text(unit),
+                            child: Text(unit, style: const TextStyle(fontSize: 13)),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -474,7 +448,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                 ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
@@ -500,7 +474,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
             SizedBox(
               height: 50,
               child: ElevatedButton(
-                onPressed:_saveIngredient,
+                onPressed: _isLoading ? null : _saveIngredient,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4CAF50),
                   shape: RoundedRectangleBorder(

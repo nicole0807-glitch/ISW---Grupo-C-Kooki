@@ -1,84 +1,130 @@
+import 'ingredient_master.dart';
+
+/// Modelo para la tabla Pantry (despensa del usuario)
 class Ingredient {
-  final String? ingredient_id;
-  final String user_id;
-  final String name;
+  final int? pantryId;  // PK de Pantry
+  final String userId;
+  final int masterIngredientId;  // FK a tabla Ingredient
+  final String? name;  // Deprecado, ahora viene de la relación
   final String category;
   final double quantity;
   final String unit;
   final DateTime? expirationDate;
-  final String? imageUrl;
-  final String status; // 'Fresh', 'Low Stock', 'Expiring Soon'
-  final DateTime createdAt;
+  final String? photoUrl;
+  final DateTime? createdAt;
+  
+  // Relación con ingrediente maestro (se llena con JOIN)
+  final IngredientMaster? ingredientMaster;
 
   Ingredient({
-    required this.ingredient_id,
-    required this.user_id,
-    required this.name,
+    this.pantryId,
+    required this.userId,
+    required this.masterIngredientId,
+    this.name,
     required this.category,
     required this.quantity,
     required this.unit,
     this.expirationDate,
-    this.imageUrl,
-    this.status = 'Fresh',
-    required this.createdAt,
+    this.photoUrl,
+    this.createdAt,
+    this.ingredientMaster,
   });
+
+  // Getters de compatibilidad
+  int? get id => pantryId;
+  String? get ingredientId => pantryId?.toString();
+  String? get imageUrl => photoUrl;
+  
+  // Nombre del ingrediente (prioriza el de la relación)
+  String get displayName => ingredientMaster?.name ?? name ?? 'Unknown';
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     return Ingredient(
-      ingredient_id: json['ingredient_id'] as String?,
-      user_id: json['user_id'] as String,
-      name: json['name'] as String,
-      category: json['category'] as String,
-      quantity: (json['quantity'] as num).toDouble(),
-      unit: json['unit'] as String,
-      expirationDate: json['expiration_date'] != null
-          ? DateTime.parse(json['expiration_date'] as String)
+      pantryId: json['ingredient_id'] as int?,
+      userId: json['user_id'] as String,
+      masterIngredientId: json['master_ingredient_id'] as int? ?? 0,
+      name: json['name'] as String?,
+      category: json['category'] as String? ?? 'Other',
+      quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
+      unit: json['unit'] as String? ?? 'unit',
+      expirationDate: json['expirationDate'] != null
+          ? DateTime.parse(json['expirationDate'] as String)
           : null,
-      imageUrl: json['image_url'] as String?,
-      status: json['status'] as String? ?? 'Fresh',
-      createdAt: DateTime.parse(json['created_at'] as String),
-      
+      photoUrl: json['imageUrl'] as String?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      // Si hay datos de JOIN, crear el objeto relacionado
+      ingredientMaster: json['Ingredient'] != null
+          ? IngredientMaster.fromJson(json['Ingredient'])
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (ingredient_id != null) 'ingredient_id': ingredient_id,
-      'user_id': user_id,
-      'name': name,
+      if (pantryId != null) 'ingredient_id': pantryId,
+      'user_id': userId,
+      'master_ingredient_id': masterIngredientId,
       'category': category,
       'quantity': quantity,
       'unit': unit,
-      'expiration_date': expirationDate?.toIso8601String(),
-      'image_url': imageUrl,
-      'status': status,
-      'created_at': createdAt.toIso8601String(),
+      if (expirationDate != null) 
+        'expirationDate': expirationDate!.toIso8601String(),
+      if (photoUrl != null) 'imageUrl': photoUrl,
+      // No enviamos 'name' porque viene de la tabla maestra
     };
   }
 
   Ingredient copyWith({
-    String? ingredient_id,
-    String? user_id,
+    int? pantryId,
+    String? userId,
+    int? masterIngredientId,
     String? name,
     String? category,
     double? quantity,
     String? unit,
     DateTime? expirationDate,
-    String? imageUrl,
-    String? status,
+    String? photoUrl,
     DateTime? createdAt,
+    IngredientMaster? ingredientMaster,
   }) {
     return Ingredient(
-      ingredient_id: ingredient_id ?? this.ingredient_id,
-      user_id: user_id ?? this.user_id,
+      pantryId: pantryId ?? this.pantryId,
+      userId: userId ?? this.userId,
+      masterIngredientId: masterIngredientId ?? this.masterIngredientId,
       name: name ?? this.name,
       category: category ?? this.category,
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
       expirationDate: expirationDate ?? this.expirationDate,
-      imageUrl: imageUrl ?? this.imageUrl,
-      status: status ?? this.status,
+      photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt ?? this.createdAt,
+      ingredientMaster: ingredientMaster ?? this.ingredientMaster,
     );
+  }
+
+  // Métodos de utilidad
+  bool get isExpired {
+    if (expirationDate == null) return false;
+    return expirationDate!.isBefore(DateTime.now());
+  }
+
+  bool get expiresSoon {
+    if (expirationDate == null) return false;
+    final daysUntilExpiration = expirationDate!.difference(DateTime.now()).inDays;
+    return daysUntilExpiration <= 3 && daysUntilExpiration >= 0;
+  }
+
+  int? get daysUntilExpiration {
+    if (expirationDate == null) return null;
+    return expirationDate!.difference(DateTime.now()).inDays;
+  }
+
+  String get status {
+    if (isExpired) return 'Expired';
+    if (expiresSoon) return 'Expiring Soon';
+    if (quantity < 100) return 'Low Stock';
+    return 'Fresh';
   }
 }

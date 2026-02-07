@@ -10,28 +10,16 @@ class IngredientCard extends StatelessWidget {
   const IngredientCard({super.key, required this.ingredient});
 
   Color _getStatusColor() {
-    switch (ingredient.status) {
-      case 'Fresh':
-        return const Color(0xFF4CAF50); // Verde
-      case 'Low Stock':
-        return const Color(0xFFFF9800); // Naranja
-      case 'Expiring Soon':
-        return const Color(0xFFF44336); // Rojo
-      default:
-        return Colors.grey;
-    }
+    if (ingredient.isExpired) return const Color(0xFFF44336);
+    if (ingredient.expiresSoon) return const Color(0xFFFF9800);
+    return const Color(0xFF4CAF50);
   }
 
   String _getStatusText() {
-    if (ingredient.expirationDate != null) {
-      final daysLeft = ingredient.expirationDate!.difference(DateTime.now()).inDays;
-      if (daysLeft < 0) {
-        return 'Expired';
-      } else if (daysLeft == 0) {
-        return 'Expires today';
-      } else if (daysLeft <= 3) {
-        return 'Expires in $daysLeft days';
-      }
+    if (ingredient.isExpired) return 'Expired';
+    if (ingredient.expiresSoon) {
+      final days = ingredient.daysUntilExpiration ?? 0;
+      return 'Expires in $days days';
     }
     return ingredient.status;
   }
@@ -80,7 +68,7 @@ class IngredientCard extends StatelessWidget {
     Get.dialog(
       AlertDialog(
         title: const Text('Delete Ingredient'),
-        content: Text('Are you sure you want to delete ${ingredient.name}?'),
+        content: Text('Are you sure you want to delete ${ingredient.displayName}?'),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
@@ -89,7 +77,7 @@ class IngredientCard extends StatelessWidget {
           TextButton(
             onPressed: () {
               Get.back();
-              controller.deleteIngredient(ingredient.ingredient_id!);
+              controller.deleteIngredient(ingredient.ingredientId!);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
@@ -136,7 +124,7 @@ class IngredientCard extends StatelessWidget {
               : const Icon(Icons.fastfood, color: Colors.grey, size: 30),
         ),
         title: Text(
-          ingredient.name,
+          ingredient.displayName,  // ← CAMBIO: Ahora usa displayName del JOIN
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
