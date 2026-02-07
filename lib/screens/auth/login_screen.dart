@@ -1,16 +1,87 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // IMPORTANTE: Para acceder al HomeController
+import '../../controllers/auth_controller.dart';
+import '../../controllers/home_controller.dart'; // IMPORTANTE: Para refrescar el rol
 import '../../utils/app_colors.dart';
 import '../home/main_layout.dart';
 import 'register_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final AuthController _authController = AuthController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor ingresa username y contraseña'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final success = await _authController.login(
+        username: username,
+        password: password,
+      );
+
+      if (success && mounted) {
+        // --- LA PIEZA CLAVE ---
+        // Antes de ir al Home, obligamos al HomeController a verificar el nuevo usuario
+        await context.read<HomeController>().checkAdminStatus();
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
+          // Fondo con imagen
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -42,22 +113,24 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _buildField("Username", Icons.person_outline, null),
+                    _buildField("Username", Icons.person_outline, _usernameController),
                     const SizedBox(height: 15),
-                    _buildField("Password", Icons.lock_outline, null, isPass: true),
+                    _buildField("Password", Icons.lock_outline, _passwordController, isPass: true),
                     const SizedBox(height: 25),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.nutveDarkGreen,
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      onPressed: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MainLayout()),
-                      ),
-                      child: const Text("INGRESAR"),
-                    ),
+                    
+                    // Botón con estado de carga
+                    _isLoading 
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.nutveDarkGreen,
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
+                          onPressed: _login,
+                          child: const Text("INGRESAR"),
+                        ),
+                        
                     TextButton(
                       onPressed: () => Navigator.push(
                         context,
@@ -90,6 +163,10 @@ class LoginScreen extends StatelessWidget {
         filled: true,
         fillColor: Colors.white.withOpacity(0.05),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white24),
+        ),
       ),
     );
   }

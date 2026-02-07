@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import 'home_screen_content.dart';
 import '../Profile/profile_screen.dart';
+import '../pantry/pantry_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -12,7 +13,7 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 2;
   final List<Widget> _screens = [
-    const Center(child: Text("Pantry")),
+    const PantryScreen(),
     const Center(child: Text("Plan")),
     const HomeScreenContent(),
     const Center(child: Text("Search")),

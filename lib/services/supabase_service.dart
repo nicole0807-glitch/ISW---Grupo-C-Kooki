@@ -6,6 +6,7 @@ class SupabaseService {
 
   Session? get currentSession => _client.auth.currentSession;
   User? get currentUser => _client.auth.currentUser;
+  SupabaseClient get supabase => _client;
 
   Future<AuthResponse> signUp(String email, String password) async {
     return await _client.auth.signUp(email: email, password: password);
@@ -14,33 +15,52 @@ class SupabaseService {
   Future<bool> isUserAdmin() async {
     final user = _client.auth.currentUser;
     
-    // 1. Si no hay usuario logueado, no es admin
-    if (user == null) return false;
+    // 1. Si no hay usuario, no es admin
+    if (user == null) {
+      print("🔍 [AdminCheck]: No hay usuario logueado.");
+      return false;
+    }
 
     try {
-      // 2. Hacemos un JOIN entre Profile y Role para obtener el nombre del rol
-      // Supabase detecta la relación por la Foreign Key automáticamente
+      // 2. Usamos !inner para asegurar que el Join se realice correctamente
+      // Traemos el campo 'name' de la tabla 'Role'
       final response = await _client
           .from('Profile')
-          .select('Role(name)') // Traemos el campo 'name' de la tabla 'Role'
+          .select('role_id, Role!inner(name)') 
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-      // La respuesta viene anidada: { "Role": { "name": "admin" } }
-      final roleData = response['Role'] as Map<String, dynamic>?;
-      final roleName = roleData?['name'] as String?;
+      print("🔍 [AdminCheck] Respuesta BD: $response");
 
-      // 3. Comparamos (asegúrate que en tu BD el rol se llame 'admin' o 'Admin')
-      return roleName?.toLowerCase() == 'admin'; 
+      if (response == null || response['Role'] == null) {
+        print("🔍 [AdminCheck]: No se encontró el perfil o el objeto Role es nulo.");
+        return false;
+      }
+
+      // 3. Extracción robusta del nombre del rol
+      final roleData = response['Role'];
+      String? roleName;
+
+      if (roleData is Map) {
+        roleName = roleData['name']?.toString();
+      } else if (roleData is List && roleData.isNotEmpty) {
+        roleName = roleData[0]['name']?.toString();
+      }
+
+      print("🔍 [AdminCheck] Rol detectado: $roleName");
+
+      // 4. Comparación (asegúrate que en tu BD sea 'admin')
+      return roleName?.toLowerCase().trim() == 'admin'; 
       
     } catch (e) {
-      print("Error verificando admin: $e");
+      print("❌ [AdminCheck] Error fatal: $e");
       return false;
     }
   }
+  
 
-  Future<String> uploadAvatar(String userId, File imageFile) async {
-    final fileName = '$userId/profile.png';
+  Future<String> uploadAvatar(String user_id, File imageFile) async {
+    final fileName = '$user_id/profile.png';
     await _client.storage.from('avatars').upload(
           fileName,
           imageFile,
@@ -81,7 +101,7 @@ class SupabaseService {
     return created['tag_id'] as int;
   }
 
-  Future<int> _getOrCreateIngredientId(String name) async {
+  Future<int> _getOrCreateingredient_id(String name) async {
     final existing = await _client
         .from('Ingredient')
         .select('ingredient_id')
@@ -101,28 +121,28 @@ class SupabaseService {
     return created['ingredient_id'] as int;
   }
 
-  Future<void> saveUserPreferences(String userId, List<String> preferences) async {
+  Future<void> saveUserPreferences(String user_id, List<String> preferences) async {
     for (String pref in preferences) {
       if (pref.isEmpty || pref == "None") continue;
       
       final int tagId = await _getOrCreateTagId(pref);
       
       await _client.from('User_preferences').upsert({
-        'user_id': userId,
+        'user_id': user_id,
         'tag_id': tagId,
       });
     }
   }
 
-  Future<void> saveUserAllergies(String userId, List<String> allergies) async {
+  Future<void> saveUserAllergies(String user_id, List<String> allergies) async {
     for (String allergy in allergies) {
       if (allergy.isEmpty || allergy == "None") continue;
 
-      final int ingredientId = await _getOrCreateIngredientId(allergy);
+      final int ingredient_id = await _getOrCreateingredient_id(allergy);
 
       await _client.from('User_allergies').upsert({
-        'user_id': userId,
-        'ingredient_id': ingredientId,
+        'user_id': user_id,
+        'ingredient_id': ingredient_id,
       });
     }
   }

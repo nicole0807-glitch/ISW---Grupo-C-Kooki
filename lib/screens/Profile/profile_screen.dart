@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
+import '../../controllers/home_controller.dart'; // Necesario para acceder a clearStatus()
 import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -13,22 +15,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Variable de estado para la animación de carga
   bool _isLoading = false; 
 
+  // --- LÓGICA DE CIERRE DE SESIÓN CORREGIDA ---
+  Future<void> _handleLogout() async {
+    final authController = AuthController();
+    final homeController = context.read<HomeController>();
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Ejecutar logout en Supabase
+      await authController.logout();
+      
+      // 2. Limpiar el estado de administrador localmente
+      homeController.clearStatus();
+
+      if (mounted) {
+        // 3. Navegación limpia al login
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error al cerrar sesión: $e")),
+        );
+      }
+    }
+  }
+
   // --- DISEÑO CIERRE DE SESIÓN ---
   void _showLogoutDialog(BuildContext context) {
-    // Controlador Auth
-    final AuthController authController = AuthController(); 
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) { // Usamos dialogContext para el pop
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           title: const Text("¿Cerrar sesión?"),
           content: const Text("Tu sesión actual finalizará y tendrás que ingresar tus credenciales nuevamente."),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context), 
+              onPressed: () => Navigator.pop(dialogContext), 
               child: const Text("CANCELAR", style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
@@ -36,25 +66,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: () async {
-                // Cerrar alerta
-                Navigator.pop(context);
-                
-                // Ejecución de la animacion
-                setState(() {
-                  _isLoading = true;
-                });
-                
-                // Espera hasta que se cierre la sesión
-                await authController.logout();
-                
-                // Ir al login screen
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
+              onPressed: () {
+                // Cerramos el diálogo inmediatamente para liberar el contexto
+                Navigator.pop(dialogContext);
+                // Ejecutamos la lógica de salida
+                _handleLogout();
               },
               child: const Text("SÍ, SALIR", style: TextStyle(color: Colors.white)),
             ),
@@ -93,7 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // --- TUS PLACEHOLDERS Y DISEÑO ---
+                    // --- TUS PLACEHOLDERS Y DISEÑO ORIGINALES ---
                     const Text("Título (Opcional)", textAlign: TextAlign.center),
                     const SizedBox(height: 100, child: Placeholder(color: Colors.blueGrey)),
                     const SizedBox(height: 20),
@@ -163,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           height: 45,
           width: 45,
           decoration: BoxDecoration(
-            color: baseColor.withValues(alpha: 0.15),
+            color: baseColor.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: baseColor),
@@ -187,9 +203,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: Colors.red.shade50, // Fondo rojo pastel
       elevation: 0, 
       shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12),
       ),
-     margin: const EdgeInsets.only(bottom: 10, top: 20),
+      margin: const EdgeInsets.only(bottom: 10, top: 20),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -197,16 +213,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: SizedBox(
             width: double.infinity,
-
             child: Text(
               text,
-              textAlign: TextAlign.center, // Alineamos el texto dentro de ese espacio infinito
+              textAlign: TextAlign.center,
               style: const TextStyle(
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
-            )
           )
         )
       )
