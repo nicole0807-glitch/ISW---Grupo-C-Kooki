@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import '../models/ingredient.dart';
 import '../services/pantry_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,7 +15,7 @@ class PantryController extends GetxController {
 
   final List<String> categories = [
     'All Items',
-    'Vegetables',
+    'Produce',
     'Protein',
     'Dairy',
     'Grains',
@@ -50,29 +51,36 @@ class PantryController extends GetxController {
 
   /// Add new ingredient
   Future<bool> addIngredient(Ingredient ingredient) async {
-    try {
-      isLoading.value = true;
-      final newIngredient = await _pantryService.addIngredient(ingredient);
-      allIngredients.insert(0, newIngredient);
-      applyFilters();
-      
-      Get.snackbar(
-        'Éxito',
-        'Ingrediente agregado correctamente',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return true;
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
+  try {
+    isLoading.value = true;
+    final newIngredient = await _pantryService.addIngredient(ingredient);
+    allIngredients.insert(0, newIngredient);
+    applyFilters();
+    
+    Get.snackbar(
+      'Éxito',  // ← Este mensaje debería aparecer
+      'Ingrediente agregado correctamente',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: const Color(0xFF4CAF50),  
+      colorText: Colors.white,                    
+      duration: const Duration(seconds: 2),
+      margin: const EdgeInsets.all(10),
+      borderRadius: 8,
+    );
+    return true;
+  } catch (e) {
+    Get.snackbar(
+      'Error',
+      e.toString(),
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+    return false;
+  } finally {
+    isLoading.value = false;
   }
+}
 
   /// Update ingredient
   Future<bool> updateIngredient(Ingredient ingredient) async {

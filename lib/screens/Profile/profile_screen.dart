@@ -16,6 +16,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Variable de estado para la animación de carga
   bool _isLoading = false; 
 
+  // --- LÓGICA DE CIERRE DE SESIÓN CORREGIDA ---
+  Future<void> _handleLogout() async {
+    final authController = AuthController();
+    final homeController = context.read<HomeController>();
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Ejecutar logout en Supabase
+      await authController.logout();
+      
+      // 2. Limpiar el estado de administrador localmente
+      homeController.clearStatus();
+
+      if (mounted) {
+        // 3. Navegación limpia al login
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error al cerrar sesión: $e")),
+        );
+      }
+    }
+  }
+
   //Variables de sesión
   String? _userName;
   String? _avatarURL;
@@ -106,11 +137,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // --- Header del perfil ---
-                    _buildProfileHeader(),
-                    const SizedBox(height: 30),
-
-                    // --- PLACEHOLDER ---
+                    // --- TUS PLACEHOLDERS Y DISEÑO ---
+                    const Text("Título (Opcional)", textAlign: TextAlign.center),
+                    const SizedBox(height: 100, child: Placeholder(color: Colors.blueGrey)),
+                    const SizedBox(height: 20),
 
                     const Text("Título (Opcional)", textAlign: TextAlign.center),
                     const SizedBox(height: 100, child: Placeholder(color: Colors.teal)),
