@@ -21,7 +21,7 @@ class IngredientCard extends StatelessWidget {
       final days = ingredient.daysUntilExpiration ?? 0;
       return 'Expires in $days days';
     }
-    return ingredient.status;
+    return ingredient.status ?? 'Fresh';
   }
 
   void _showOptionsMenu(BuildContext context) {
@@ -77,7 +77,6 @@ class IngredientCard extends StatelessWidget {
         TextButton(
           onPressed: () {
             Get.back();
-            // ← CAMBIO: Convertir a String
             controller.deleteIngredient(ingredient.id!);  // ingredient.id ya es String
           },
           style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -125,7 +124,7 @@ class IngredientCard extends StatelessWidget {
               : const Icon(Icons.fastfood, color: Colors.grey, size: 30),
         ),
         title: Text(
-          ingredient.displayName,  // ← CAMBIO: Ahora usa displayName del JOIN
+          ingredient.displayName,  
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -136,7 +135,7 @@ class IngredientCard extends StatelessWidget {
           children: [
             const SizedBox(height: 4),
             Text(
-              '${ingredient.quantity}${ingredient.unit} • ${ingredient.category}',
+              '${ingredient.displayQuantity} • ${ingredient.category}',
               style: const TextStyle(
                 color: Colors.grey,
                 fontSize: 13,

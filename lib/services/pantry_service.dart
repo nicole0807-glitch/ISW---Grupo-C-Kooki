@@ -13,7 +13,7 @@ class PantryService {
       // JOIN con la tabla Ingredient para traer el nombre
       final response = await _supabase
           .from(_tableName)
-          .select('*, Ingredient(*)')  // ← JOIN con tabla maestra
+          .select('*, Ingredient(name)')  // ← JOIN con tabla maestra
           .eq('user_id', userId)
           .order('ingredient_id', ascending: false);
 
@@ -50,7 +50,7 @@ class PantryService {
       final response = await _supabase
           .from(_tableName)
           .insert(jsonData)
-          .select('*, Ingredient(*)')  // ← JOIN en el INSERT también
+          .select('*, Ingredient(name)')  
           .single();
 
       print('✅ Ingrediente agregado exitosamente');

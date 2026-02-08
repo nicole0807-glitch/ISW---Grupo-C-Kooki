@@ -25,8 +25,8 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   
   IngredientMaster? _selectedIngredient;
   List<IngredientMaster> _searchResults = [];
-  String _selectedCategory = 'Dairy';
-  String _selectedUnit = 'Grams (g)';
+  String _selectedCategory = 'Produce';
+  String _selectedUnit = 'g';
   DateTime? _expirationDate;
   File? _imageFile;
   bool _isLoading = false;
@@ -35,16 +35,16 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   final List<String> _categories = [
     'Produce',
     'Dairy',
-    'Proteins',
+    'Protein',
     'Grains',
     'Other',
   ];
 
   final List<String> _units = [
-    'Grams (g)',
-    'Kilograms (kg)',
-    'Liters (L)',
-    'Milliliters (mL)',
+    'g',
+    'kg',
+    'L',
+    'mL',
     'Pieces',
     'Cups',
   ];
@@ -53,7 +53,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   void initState() {
     super.initState();
     if (widget.ingredient != null) {
-      _quantityController.text = widget.ingredient!.numericQuantity.toString();
+      _quantityController.text = widget.ingredient!.quantity.toString();
       _selectedCategory = widget.ingredient!.category;
       _selectedUnit = widget.ingredient!.unit;
       _expirationDate = widget.ingredient!.expirationDate;
@@ -130,82 +130,67 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   }
 
   Future<void> _saveIngredient() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedIngredient == null) {
-      Get.snackbar('Error', 'Selecciona un ingrediente');
+  if (!_formKey.currentState!.validate()) return;
+  if (_selectedIngredient == null) {
+    Get.snackbar('Error', 'Selecciona un ingrediente');
+    return;
+  }
+
+  setState(() => _isLoading = true);
+
+  try {
+    final controller = Get.find<PantryController>();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (userId == null) {
+      Get.snackbar('Error', 'Usuario no autenticado');
+      setState(() => _isLoading = false);
       return;
     }
 
-    setState(() => _isLoading = true);
+    final quantityValue = double.parse(_quantityController.text.trim());
 
-    try {
-      final controller = Get.find<PantryController>();
-      final userId = Supabase.instance.client.auth.currentUser?.id;
+    // Simplificar unidad: "Kilograms (kg)" → "kg"
+    String unitShort = _selectedUnit;
+    final ingredient = Ingredient(
+      pantryId: widget.ingredient?.pantryId,
+      ingredientMasterId: _selectedIngredient!.ingredientId,  // ← ID del master
+      userId: userId,
+      name: _selectedIngredient!.name,  // ← Para uso interno (no se guarda en BD)
+      category: _selectedCategory,
+      quantity: quantityValue,
+      unit: unitShort.trim(),
+      expirationDate: _expirationDate,
+      imageUrl: null,
+      createdAt: DateTime.now(),
+      status: 'Fresh',
+    );
 
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🟡 PREPARANDO INGREDIENTE PARA GUARDAR');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🟡 Guardando:');
+    print('   Master ID: ${ingredient.ingredientMasterId}');
+    print('   Name: ${ingredient.name}');
+    print('   Quantity: ${ingredient.quantity}');
+    print('   Unit: ${ingredient.unit}');
 
-      if (userId == null) {
-        print('❌ Usuario no autenticado');
-        Get.snackbar('Error', 'Usuario no autenticado');
-        setState(() => _isLoading = false);
-        return;
-      }
+    bool success;
+    if (widget.ingredient == null) {
+      success = await controller.addIngredient(ingredient);
+    } else {
+      success = await controller.updateIngredient(ingredient);
+    }
 
-      print('👤 User ID: $userId');
-      print('🔢 Ingredient Master ID: ${_selectedIngredient!.ingredientId}');
-      print('📝 Nombre: ${_selectedIngredient!.name}');
-
-      // Construir quantity con formato: "100 g", "2.5 L", etc.
-      final quantityValue = _quantityController.text.trim();
-      final quantityFormatted = '$quantityValue $_selectedUnit';
-
-      print('📊 Quantity formatted: $quantityFormatted');
-      print('📦 Category: $_selectedCategory');
-      print('⚖️ Unit: $_selectedUnit');
-
-      final ingredient = Ingredient(
-        pantryId: widget.ingredient?.pantryId,
-        ingredientId: _selectedIngredient!.ingredientId,
-        userId: userId,
-        name: _selectedIngredient!.name,
-        category: _selectedCategory,
-        quantity: quantityFormatted,
-        unit: _selectedUnit,
-        expDate: _expirationDate,
-        photoUrl: widget.ingredient?.photoUrl,
-        boughtDate: widget.ingredient?.boughtDate ?? DateTime.now(),
-      );
-
-      print('🔵 Objeto Ingredient creado');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-      bool success;
-      if (widget.ingredient == null) {
-        print('🆕 Modo: AGREGAR nuevo');
-        success = await controller.addIngredient(ingredient);
-      } else {
-        print('✏️ Modo: ACTUALIZAR existente');
-        success = await controller.updateIngredient(ingredient);
-      }
-
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print(success ? '✅ SUCCESS' : '❌ FAILED');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-      if (success && mounted) {
-        Get.back();
-      }
-    } catch (e) {
-      print('❌ Exception en _saveIngredient: $e');
-      Get.snackbar('Error', e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    if (success && mounted) {
+      Get.back();
+    }
+  } catch (e) {
+    print('❌ Error: $e');
+    Get.snackbar('Error', e.toString());
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
