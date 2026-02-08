@@ -3,6 +3,7 @@ import 'package:provider/provider.dart'; // Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart'; // Necesario para acceder a clearStatus()
 import '../auth/login_screen.dart';
+import '../../services/profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,34 +16,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Variable de estado para la animación de carga
   bool _isLoading = false; 
 
-  // --- LÓGICA DE CIERRE DE SESIÓN CORREGIDA ---
-  Future<void> _handleLogout() async {
-    final authController = AuthController();
-    final homeController = context.read<HomeController>();
+  //Variables de sesión
+  String? _userName;
+  String? _avatarURL;
 
-    setState(() => _isLoading = true);
+  //Instancia del backen de profile
+  final ProfileService _profileService = ProfileService();
 
-    try {
-      // 1. Ejecutar logout en Supabase
-      await authController.logout();
-      
-      // 2. Limpiar el estado de administrador localmente
-      homeController.clearStatus();
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData(); //Función de abajo
+  }
 
-      if (mounted) {
-        // 3. Navegación limpia al login
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error al cerrar sesión: $e")),
-        );
-      }
+  //Función para cargar los datos del usuario
+  Future<void> _loadUserData() async {
+    //Si no hay usuario logueado no se ejecuta
+    if (!_profileService.isUserLoggedIn) {
+      setState(() {
+      _userName = "Desarrollador Test";
+      _avatarURL = "https://i.pravatar.cc/300"; // Una imagen aleatoria de internet
+      });
+      return;
+    }
+
+    //Si hay usuario registrado se obtienen sus datos
+    final data = await _profileService.getProfileData();
+
+    if (data != null && mounted) {
+      //Se asignan los datos a las variables:
+      _userName = data['username'] ?? 'Usuario';
+      _avatarURL = data['avatar_url'];
     }
   }
 
@@ -82,22 +86,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    //Si el usuario no está registrado se muestra una pantalla de registro
+
+    
+    if (!_profileService.isUserLoggedIn) {
+      return _buildGuestView(context);
+    }
+    
+
     return Scaffold(
-      appBar: AppBar(
-        // Título de la página
-        title: const Text("Mi Perfil"),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () => {/* Acción Futura */},
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () { /* Acción futura */ },
-          ),
-        ],
-      ),
       
       // --- LÓGICA CIERRE DE SESIÓN ---
       // Si _isLoading es true, muestra el círculo.
@@ -109,10 +106,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // --- TUS PLACEHOLDERS Y DISEÑO ORIGINALES ---
-                    const Text("Título (Opcional)", textAlign: TextAlign.center),
-                    const SizedBox(height: 100, child: Placeholder(color: Colors.blueGrey)),
-                    const SizedBox(height: 20),
+                    // --- Header del perfil ---
+                    _buildProfileHeader(),
+                    const SizedBox(height: 30),
+
+                    // --- PLACEHOLDER ---
 
                     const Text("Título (Opcional)", textAlign: TextAlign.center),
                     const SizedBox(height: 100, child: Placeholder(color: Colors.teal)),
@@ -198,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildLogoutButton({
     required String text,
     required VoidCallback onTap,
-  }) {
+    }) {
     return Card(
       color: Colors.red.shade50, // Fondo rojo pastel
       elevation: 0, 
@@ -227,4 +225,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
       )
     );
   }
+
+  // -- Widget Información del perfil --
+  Widget _buildProfileHeader() {
+    //Obtener el email desde el backend
+    final String email = _profileService.currentUser?.email ?? 'no email';
+
+    return Column (
+      children: [
+        //Avatar del usuario
+        CircleAvatar(
+          radius: 50,
+          backgroundColor: Colors.grey.shade200,
+          backgroundImage: _avatarURL != null ? NetworkImage(_avatarURL!) : null,
+          child: _avatarURL == null
+            ? const Icon(Icons.person, size: 50, color: Colors.grey)
+            : null,
+        ),
+        // Username
+        const SizedBox(height: 16),
+        Text(
+          _userName ?? "Cargando...",
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        //email
+        Text(
+          email,
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+        ),
+      ]
+    );
+  }
+  
+  Widget _buildGuestView(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(30.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              //Icono de perfil cerrado
+              Icon(Icons.account_circle_outlined, size: 100, color: Colors.grey.shade300),
+              const SizedBox(height: 20),
+
+              const Text(
+                "Guarda tus recetas favoritas y gestiona tu despensa personalizando tu perfil.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black)
+              ),
+              const SizedBox(height: 40),
+
+              //Botón de login
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF13EC5B),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: const StadiumBorder(),
+                  ),
+                  onPressed: () {
+                    //Ir al login
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                  child: Text(
+                    "Iniciar Sesión",
+                    style: TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
+                  )
+                )
+              )
+
+            ]
+          )
+        )
+      )
+    );
+  }
+    
+
 }
