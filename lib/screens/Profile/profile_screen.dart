@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable, unused_element
+
 import 'package:flutter/material.dart';
 import 'package:kooki/services/supabase_service.dart';
 import 'package:provider/provider.dart'; // Necesario para limpiar el estado

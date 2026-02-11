@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:kooki/controllers/recipe_controller.dart';
 import 'package:kooki/models/recipe_model.dart';
+
 class RecipeFormScreen extends StatefulWidget {
   final Recipe? recipe;
   const RecipeFormScreen({super.key, this.recipe});
@@ -19,7 +20,9 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   late TextEditingController _imgUrlCtrl;
   String? _difficulty;
 
-  // Listas locales temporales
+  // 1. Definimos la lista maestra de opciones permitidas (Coincide con el SQL Constraint)
+  final List<String> _difficultyOptions = ["Fácil", "Media", "Difícil"];
+
   List<RecipeIngredient> _ingredients = [];
   List<String> _steps = [];
 
@@ -31,7 +34,14 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     _descCtrl = TextEditingController(text: r?.description ?? '');
     _timeCtrl = TextEditingController(text: r?.cookingTime ?? '');
     _imgUrlCtrl = TextEditingController(text: r?.imageUrl ?? '');
-    _difficulty = r?.difficulty;
+    
+    // 2. SEGURIDAD: Validar que el valor de la DB exista en nuestra lista
+    // Esto evita la pantalla roja si el dato viene nulo o incorrecto
+    if (r?.difficulty != null && _difficultyOptions.contains(r!.difficulty)) {
+      _difficulty = r.difficulty;
+    } else {
+      _difficulty = null; // O _difficultyOptions.first si prefieres un valor por defecto
+    }
     
     if (r != null) {
       _ingredients = List.from(r.ingredients);
@@ -58,7 +68,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     }
 
     final newRecipe = Recipe(
-      id: widget.recipe?.id ?? 0, // 0 para nuevas (el backend lo ignora al crear)
+      id: widget.recipe?.id ?? 0,
       title: _titleCtrl.text,
       description: _descCtrl.text,
       imageUrl: _imgUrlCtrl.text,
@@ -67,8 +77,9 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
       nutrition: widget.recipe?.nutrition ?? {},
       ingredients: _ingredients,
       steps: _steps,
-      tagIds: widget.recipe?.tagIds ?? [], // TODO: Agregar selector de Tags
+      tagIds: widget.recipe?.tagIds ?? [], 
       rating: widget.recipe?.rating ?? 0.0,
+      status: widget.recipe?.status ?? 'pendiente', // Preservamos el estado actual
     );
 
     final success = await context
@@ -78,14 +89,14 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     if (success && mounted) Navigator.pop(context);
   }
 
-  // UI para añadir ingrediente
   void _addIngredientDialog() {
     String name = '';
     String amount = '';
-    String unit = 'g'; // Valor por defecto válido según tu tabla Unit
+    String unit = 'g';
 
     showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text("Ingrediente"),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text("Añadir Ingrediente"),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(decoration: const InputDecoration(labelText: "Nombre"), onChanged: (v) => name = v),
         TextField(decoration: const InputDecoration(labelText: "Cantidad"), keyboardType: TextInputType.number, onChanged: (v) => amount = v),
@@ -111,48 +122,67 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final controller = context.watch<RecipeAdminController>();
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.recipe == null ? "Nueva Receta" : "Editar Receta")),
+      appBar: AppBar(
+        title: Text(widget.recipe == null ? "Nueva Receta" : "Editar Receta"),
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // --- Campos Generales ---
-            TextFormField(controller: _titleCtrl, decoration: const InputDecoration(labelText: "Título", border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? "Requerido" : null),
-            const SizedBox(height: 10),
-            TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: "Descripción", border: OutlineInputBorder()), maxLines: 2),
-            const SizedBox(height: 10),
+            TextFormField(
+              controller: _titleCtrl, 
+              decoration: const InputDecoration(labelText: "Título", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))), 
+              validator: (v) => v!.isEmpty ? "El título es obligatorio" : null
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descCtrl, 
+              decoration: const InputDecoration(labelText: "Descripción", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))), 
+              maxLines: 2
+            ),
+            const SizedBox(height: 16),
             Row(children: [
-              Expanded(child: TextFormField(controller: _timeCtrl, decoration: const InputDecoration(labelText: "Tiempo (min)"))),
-              const SizedBox(width: 10),
+              Expanded(child: TextFormField(
+                controller: _timeCtrl, 
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: "Tiempo (min)", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))))
+              )),
+              const SizedBox(width: 16),
               Expanded(child: DropdownButtonFormField<String>(
                 value: _difficulty,
-                items: ["Fácil", "Medio", "Difícil"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                onChanged: (v) => _difficulty = v,
-                decoration: const InputDecoration(labelText: "Dificultad"),
+                // 3. Usamos la lista de opciones sanitizada
+                items: _difficultyOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (v) => setState(() => _difficulty = v),
+                decoration: const InputDecoration(labelText: "Dificultad", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
+                validator: (v) => v == null ? "Selecciona una dificultad" : null,
               )),
             ]),
             
-            const Divider(height: 30),
-            
-            // --- Ingredientes ---
+            const Divider(height: 40),
             _sectionHeader("Ingredientes", _addIngredientDialog),
-            ..._ingredients.asMap().entries.map((e) => ListTile(
-              dense: true,
-              title: Text(e.value.name),
-              subtitle: Text("${e.value.amount} ${e.value.unit}"),
-              trailing: IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() => _ingredients.removeAt(e.key))),
+            ..._ingredients.asMap().entries.map((e) => Card(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: ListTile(
+                dense: true,
+                title: Text(e.value.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text("${e.value.amount} ${e.value.unit}"),
+                trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20), onPressed: () => setState(() => _ingredients.removeAt(e.key))),
+              ),
             )),
 
-            const Divider(height: 30),
-
-            // --- Pasos ---
-            _sectionHeader("Pasos", () {
+            const Divider(height: 40),
+            _sectionHeader("Pasos de Preparación", () {
               String step = '';
               showDialog(context: context, builder: (ctx) => AlertDialog(
-                content: TextField(onChanged: (v) => step = v, decoration: const InputDecoration(hintText: "Instrucción del paso")),
+                title: const Text("Nuevo Paso"),
+                content: TextField(onChanged: (v) => step = v, decoration: const InputDecoration(hintText: "Escribe la instrucción...")),
                 actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
                   ElevatedButton(onPressed: () { 
                     if(step.isNotEmpty) setState(() => _steps.add(step)); 
                     Navigator.pop(ctx); 
@@ -174,22 +204,31 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
                 for (int i = 0; i < _steps.length; i++)
                   ListTile(
                     key: ValueKey("step_$i"),
-                    leading: CircleAvatar(radius: 12, child: Text("${i + 1}", style: const TextStyle(fontSize: 12))),
+                    leading: CircleAvatar(backgroundColor: const Color(0xFF13EC5B), radius: 12, child: Text("${i + 1}", style: const TextStyle(fontSize: 10, color: Colors.black, fontWeight: FontWeight.bold))),
                     title: Text(_steps[i]),
-                    trailing: const Icon(Icons.drag_handle),
+                    trailing: const Icon(Icons.drag_handle, color: Colors.grey),
                   )
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 56,
               child: ElevatedButton(
-                onPressed: context.watch<RecipeAdminController>().isLoading ? null : _submit,
-                child: const Text("GUARDAR RECETA"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF13EC5B),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                onPressed: controller.isLoading ? null : _submit,
+                child: controller.isLoading 
+                  ? const CircularProgressIndicator(color: Colors.black) 
+                  : Text(widget.recipe == null ? "CREAR RECETA" : "ACTUALIZAR RECETA", style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
-            )
+            ),
+            const SizedBox(height: 20),
           ]),
         ),
       ),
@@ -199,7 +238,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   Widget _sectionHeader(String title, VoidCallback onAdd) {
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      IconButton(onPressed: onAdd, icon: const Icon(Icons.add_circle, color: Colors.green)),
+      IconButton(onPressed: onAdd, icon: const Icon(Icons.add_circle, color: Color(0xFF13EC5B), size: 28)),
     ]);
   }
 }

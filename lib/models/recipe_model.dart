@@ -11,6 +11,7 @@ class Recipe {
   final List<String> steps;
   final List<int> tagIds;
   final String status; 
+  String? reviewerName;
 
   Recipe({
     required this.id,
@@ -24,6 +25,7 @@ class Recipe {
     required this.ingredients,
     required this.steps,
     required this.tagIds,
+    this.reviewerName,
     this.status = 'pending', // Valor por defecto
   });
 

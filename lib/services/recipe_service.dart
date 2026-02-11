@@ -23,6 +23,10 @@ class RecipeService {
         "Recipe_Tags" (
           tag_id
         )
+        "Recipe_Validation" (
+        reviewer_id,
+        "Profile" ( username )
+      )
       ''');
 
     

@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -28,6 +30,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   String _selectedCategory = 'Produce';
   String _selectedUnit = 'g';
   DateTime? _expirationDate;
+  // ignore: unused_field
   File? _imageFile;
   bool _isLoading = false;
   bool _isSearching = false;
