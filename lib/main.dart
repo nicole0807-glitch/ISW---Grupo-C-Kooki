@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import 'package:kooki/screens/home/home_screen_content.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

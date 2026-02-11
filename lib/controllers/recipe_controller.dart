@@ -14,7 +14,7 @@ class RecipeAdminController extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
     try {
-      recipes = await _service.fetchRecipes();
+      recipes = await _service.fetchRecipes(onlyApproved: false);
     } catch (e) {
       errorMessage = e.toString();
     } finally {

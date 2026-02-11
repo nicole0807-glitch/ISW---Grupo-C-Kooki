@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         // --- LA PIEZA CLAVE ---
         // Antes de ir al Home, obligamos al HomeController a verificar el nuevo usuario
-        await context.read<HomeController>().checkAdminStatus();
+        await context.read<HomeController>().loadUserRole();
 
         if (mounted) {
           Navigator.pushReplacement(

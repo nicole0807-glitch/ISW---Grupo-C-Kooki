@@ -84,52 +84,39 @@ class AuthController {
       rethrow;
     }
   }
-  Future<bool> registerUser({
-    required String email,
-    required String password,
-    required String firstName,
-    required String lastName,
-    required String username,
-    File? imageFile,
-  }) async {
-    try {
-      print('🔵 Registrando usuario...');
-      
-      // PASO 1: Registrar en Supabase Auth
-      final authResponse = await _service.signUp(email, password);
-      final user_id = authResponse.user?.id;
+ Future<bool> registerUser({
+  required String email,
+  required String password,
+  required String firstName,
+  required String lastName,
+  required String username,
+  File? imageFile,
+}) async {
+  try {
+    final authResponse = await _service.signUp(email, password);
+    final user_id = authResponse.user?.id;
 
-      if (user_id == null) {
-        throw Exception('No se pudo crear el usuario');
-      }
+    if (user_id == null) throw Exception('No se pudo crear el usuario');
 
-      print('✅ Usuario creado en Auth');
-      print('🆔 User ID: $user_id');
-
-      // PASO 2: Subir avatar si existe
-      String avatarUrl = ""; 
-      if (imageFile != null) {
-        print('📸 Subiendo avatar...');
-        avatarUrl = await _service.uploadAvatar(user_id, imageFile);
-        print('✅ Avatar subido: $avatarUrl');
-      }
-
-      // PASO 3: Crear perfil en User_profile
-      print('📝 Creando perfil...');
-      await _service.supabase.from('Profile').insert({
-        'user_id': user_id,
-        'username': username,
-        'email': email,
-        'role_id': 1, 
-        'status': true,
-        'avatar_url': avatarUrl.isEmpty ? null : avatarUrl, 
-      });
-
-      print('✅ Registro completado exitosamente');
-      return true;
-    } catch (e) {
-      print('❌ Error en registro: $e');
-      rethrow;
+    // Inicializamos como null explícitamente
+    String? avatarUrl; 
+    
+    if (imageFile != null) {
+      avatarUrl = await _service.uploadAvatar(user_id, imageFile);
     }
+
+    await _service.supabase.from('Profile').insert({
+      'user_id': user_id,
+      'username': username,
+      'email': email,
+      'role_id': 1, 
+      'status': true,
+      'avatar_url': avatarUrl, // Enviará null si no hay imagen
+    });
+
+    return true;
+  } catch (e) {
+    rethrow;
   }
+}
 }

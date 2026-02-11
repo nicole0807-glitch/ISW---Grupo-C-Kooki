@@ -1,26 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 1. Importar Provider
+import 'package:kooki/screens/recipe/validation_queue_screen.dart';
+import 'package:provider/provider.dart';
 
-// Imports de tus archivos
 import 'package:kooki/screens/recipe/widgets/quick_bite_card.dart';
 import '../../utils/app_colors.dart';
 import '../../services/recipe_service.dart';
 import '../../models/recipe_model.dart';
 import '../recipe/widgets/recipe_card.dart';
-
-// 2. Importar el controlador y la pantalla de Admin
 import '../../controllers/home_controller.dart'; 
-import '../recipe/admin_recipes_screen.dart'; // Asegúrate que esta ruta sea correcta
+import '../recipe/admin_recipes_screen.dart';
 
 class HomeScreenContent extends StatelessWidget {
   const HomeScreenContent({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Instanciamos el servicio de recetas
     final RecipeService recipeService = RecipeService();
-    
-    // 3. Escuchamos el estado del HomeController para saber si es Admin
     final homeController = context.watch<HomeController>();
 
     return SingleChildScrollView(
@@ -61,34 +56,55 @@ class HomeScreenContent extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // --- 1.5 BOTÓN DE ADMIN (SOLO VISIBLE SI isAdmin es TRUE) ---
+          // --- 1.5 SECCIÓN DE BOTONES DE ROL (DINÁMICA) ---
+          
+          // Botón para Nutricionistas
+         if (homeController.isNutricionista) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+                onPressed: () {
+                  // --- AGREGA ESTA LÍNEA ---
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ValidationQueueScreen()),
+                  );
+                },
+                icon: const Icon(Icons.fact_check),
+                label: const Text("COLA DE VALIDACIÓN"),
+              ),
+            ),
+            const SizedBox(height: 15),
+          ],
+          // Botón para Administradores
           if (homeController.isAdmin) ...[
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[900], // Color oscuro para diferenciar
+                  backgroundColor: Colors.grey[900],
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 ),
                 icon: const Icon(Icons.admin_panel_settings),
                 label: const Text("PANEL DE ADMINISTRADOR (RECETAS)"),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminRecipesScreen(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const AdminRecipesScreen()),
                   );
                 },
               ),
             ),
             const SizedBox(height: 20),
           ],
-          // -----------------------------------------------------------
 
           // --- 2. BARRA DE BÚSQUEDA ---
           TextField(
@@ -116,15 +132,11 @@ class HomeScreenContent extends StatelessWidget {
             future: recipeService.fetchRecipes(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.nutveDarkGreen),
-                );
+                return const Center(child: CircularProgressIndicator(color: AppColors.nutveDarkGreen));
               }
-
               if (snapshot.hasError) {
                 return Center(child: Text("Error al cargar recetas: ${snapshot.error}"));
               }
-
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return const Center(child: Text("No se encontraron recetas."));
               }
@@ -136,7 +148,6 @@ class HomeScreenContent extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- Carrusel Horizontal de Top Rated ---
                   SizedBox(
                     height: 320,
                     child: topRatedRecipes.isEmpty
@@ -144,20 +155,14 @@ class HomeScreenContent extends StatelessWidget {
                         : ListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: topRatedRecipes.length,
-                            itemBuilder: (context, index) {
-                              return RecipeCard(recipe: topRatedRecipes[index]);
-                            },
+                            itemBuilder: (context, index) => RecipeCard(recipe: topRatedRecipes[index]),
                           ),
                   ),
-                  //----- QUICK HEALTHY BITES -----
                   const SizedBox(height: 35),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "Snacks Rápidos y Saludables",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
+                      const Text("Snacks Rápidos y Saludables", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       TextButton(
                         onPressed: () {},
                         child: const Text("View All", style: TextStyle(color: AppColors.nutveSelectionGreen)),
@@ -165,8 +170,6 @@ class HomeScreenContent extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
-
-                  // Lista Vertical de Snacks Rápidos
                   quickBitesRecipes.isEmpty
                       ? const Center(child: Text("No se encontraron snacks rápidos."))
                       : ListView.separated(
@@ -174,9 +177,7 @@ class HomeScreenContent extends StatelessWidget {
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: quickBitesRecipes.length > 3 ? 3 : quickBitesRecipes.length,
                           separatorBuilder: (context, index) => const SizedBox(height: 15),
-                          itemBuilder: (context, index) {
-                            return QuickBiteCard(recipe: quickBitesRecipes[index]);
-                          },
+                          itemBuilder: (context, index) => QuickBiteCard(recipe: quickBitesRecipes[index]),
                         ),
                   const SizedBox(height: 50),
                 ],
