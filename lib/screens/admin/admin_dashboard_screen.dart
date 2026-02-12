@@ -1,0 +1,216 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../controllers/adminDashboardController.dart';
+
+import '../recipe/admin_recipes_screen.dart'; 
+
+class AdminDashboardScreen extends StatefulWidget {
+  const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  final AdminDashboardController _controller = AdminDashboardController();
+
+  final Color bgDark = const Color(0xFF1B2521);
+  final Color cardDark = const Color(0xFF24302B);
+  final Color accentGreen = const Color(0xFF22C55E);
+  final Color lightGreen = const Color(0xFFDCFCE7);
+  final Color textWhite = Colors.white;
+  final Color textGrey = const Color(0xFFA1A1AA);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: bgDark,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 40),
+                  
+                  Text(
+                    "Management Hub", 
+                    style: GoogleFonts.poppins(color: textWhite, fontSize: 20, fontWeight: FontWeight.bold)
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Pasamos el context para poder navegar
+                  _buildManagementHub(context),
+                ],
+              ),
+            ),
+          ),
+          bottomNavigationBar: _buildBottomNavBar(context),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        const CircleAvatar(
+          radius: 24,
+          backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("System Admin", style: GoogleFonts.poppins(color: textGrey, fontSize: 12)),
+            Text("Kooki Dashboard", style: GoogleFonts.poppins(color: textWhite, fontSize: 18, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const Spacer(),
+        Stack(
+          children: [
+            Icon(Icons.notifications, color: textWhite, size: 28),
+            if (_controller.newReports > 0)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                ),
+              )
+          ],
+        )
+      ],
+    );
+  }
+
+  Widget _buildManagementHub(BuildContext context) {
+    return Column(
+      children: [
+        // Botón User Management (Sin acción por ahora)
+        _buildMenuButton(
+          "User Management", 
+          "Roles & Permissions", 
+          Icons.manage_accounts, 
+          Colors.blue,
+          () {}, 
+        ),
+        const SizedBox(height: 16),
+
+        // 3. AQUÍ AGREGAMOS LA NAVEGACIÓN A ADMIN RECIPES
+        _buildMenuButton(
+          "Recipe CRUD", 
+          "Create, Edit & Delete", 
+          Icons.book, 
+          lightGreen,
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminRecipesScreen()),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+
+        // Botón Moderation (Sin acción por ahora)
+        _buildMenuButton(
+          "Moderation", 
+          "Flagged content & Reports", 
+          Icons.gavel, 
+          Colors.orange,
+          () {}, 
+        ),
+      ],
+    );
+  }
+
+  // 2. MODIFICAMOS ESTE WIDGET PARA ACEPTAR 'onTap'
+  Widget _buildMenuButton(String title, String subtitle, IconData icon, Color iconBg, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap, // Usamos la función pasada por parámetro
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardDark,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            )
+          ]
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconBg.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconBg == lightGreen ? Colors.white : iconBg, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: GoogleFonts.poppins(color: textWhite, fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(subtitle, style: GoogleFonts.poppins(color: textGrey, fontSize: 12)),
+              ],
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: textGrey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: bgDark,
+        border: Border(top: BorderSide(color: cardDark, width: 1)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              decoration: BoxDecoration(
+                color: cardDark,
+                borderRadius: BorderRadius.circular(20)
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.home, color: accentGreen, size: 28),
+                  const SizedBox(width: 8),
+                  Text("Home", style: GoogleFonts.poppins(color: accentGreen, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

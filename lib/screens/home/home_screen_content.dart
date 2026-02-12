@@ -9,6 +9,7 @@ import '../../models/recipe_model.dart';
 import '../recipe/widgets/recipe_card.dart';
 import '../../controllers/home_controller.dart'; 
 import '../recipe/admin_recipes_screen.dart';
+import '../admin/admin_dashboard_screen.dart';
 
 class HomeScreenContent extends StatelessWidget {
   const HomeScreenContent({super.key});
@@ -89,16 +90,17 @@ class HomeScreenContent extends StatelessWidget {
               height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[900],
-                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xFF1B2521), // Usé el color oscuro del dashboard
+                  foregroundColor: const Color(0xFF22C55E), // Usé el verde del dashboard
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 ),
-                icon: const Icon(Icons.admin_panel_settings),
-                label: const Text("PANEL DE ADMINISTRADOR (RECETAS)"),
+                icon: const Icon(Icons.dashboard), // Cambié el icono a dashboard
+                label: const Text("ADMIN DASHBOARD"), // Cambié el texto
                 onPressed: () {
+                  // Redirección al AdminDashboardScreen que creamos antes
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AdminRecipesScreen()),
+                    MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
                   );
                 },
               ),
