@@ -4,7 +4,7 @@ import '../services/recipe_service.dart';
 
 class RecipeAdminController extends ChangeNotifier {
   final RecipeService _service = RecipeService();
-  
+
   List<Recipe> recipes = [];
   bool isLoading = false;
   String? errorMessage;
@@ -23,7 +23,10 @@ class RecipeAdminController extends ChangeNotifier {
     }
   }
 
-  Future<bool> createOrUpdateRecipe(Recipe recipe, {bool isEdit = false}) async {
+  Future<bool> createOrUpdateRecipe(
+    Recipe recipe, {
+    bool isEdit = false,
+  }) async {
     isLoading = true;
     notifyListeners();
     try {

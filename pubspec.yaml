@@ -15,6 +15,7 @@ dependencies:
   get: ^4.6.5
   flutter_local_notifications: ^17.0.0
   timezone: ^0.9.4
+  permission_handler: ^12.0.1
   
 dev_dependencies:
   flutter_test:
@@ -28,3 +29,7 @@ flutter:
     - assets/logo.png
     - assets/imagen_main.png
     - assets/imagen_boton_home.png
+    - assets/Mitroglu1.png
+    - assets/Mitroglu2.png
+    - assets/Mitroglu3.png
+    - assets/Mitroglu4.png

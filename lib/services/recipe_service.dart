@@ -1,13 +1,121 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/recipe_model.dart';
+import '../models/user_recipe_model.dart';
+import 'dart:typed_data'; // Necesario para compatibilidad Web
 
 class RecipeService {
   final _supabase = Supabase.instance.client;
 
-  // --- LEER (Ya lo tenías) ---
+  // ==========================================
+  // 1. RECETAS DE LA COMUNIDAD (user_recipes)
+  // ==========================================
+
+  /// Obtiene las recetas publicadas por usuarios
+  Future<List<UserRecipe>> fetchCommunityRecipes() async {
+    try {
+      final response = await _supabase
+          .from('user_recipes')
+          .select()
+          .order('created_at', ascending: false);
+
+      return (response as List)
+          .map((data) => UserRecipe.fromMap(data))
+          .toList();
+    } catch (e) {
+      print("Error fetching community: $e");
+      return [];
+    }
+  }
+
+  /// Subida de imagen compatible con WEB (usa bytes en lugar de File)
+  Future<String?> uploadRecipeImage(
+    Uint8List imageBytes,
+    String fileName,
+  ) async {
+    try {
+      await _supabase.storage
+          .from('recipe_images')
+          .uploadBinary(
+            fileName,
+            imageBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true, // Importante para evitar errores de duplicados
+            ),
+          );
+      // Generamos la URL pública para guardarla en la base de datos
+      return _supabase.storage.from('recipe_images').getPublicUrl(fileName);
+    } catch (e) {
+      print("Error uploading image: $e");
+      return null;
+    }
+  }
+
+  /// Guarda la receta en la tabla 'user_recipes'
+  Future<void> saveRecipe(UserRecipe recipe) async {
+    try {
+      final user = _supabase.auth.currentUser;
+
+      // Mapeamos los campos según tus tablas de las capturas
+      final recipeData = {
+        'user_id': user?.id,
+        'user_name': user?.userMetadata?['full_name'] ?? 'Usuario Kooki',
+        'title': recipe.title,
+        'image_url': recipe.imageUrl,
+        'duration': recipe.duration,
+        'cost': recipe.cost,
+        'difficulty': recipe.difficulty,
+        'ingredients': recipe.ingredients, // Campo jsonb
+        'steps': recipe.steps, // Campo jsonb
+        'preference': '', // Columna de tu esquema
+        'avg_rating': 0.0, // Columna de tu esquema
+      };
+
+      await _supabase.from('user_recipes').insert(recipeData);
+    } catch (e) {
+      print("Error saving recipe: $e");
+      throw Exception('No se pudo guardar la receta');
+    }
+  }
+
+  // --- Métodos para Feedback (Comentarios y Ratings) ---
+
+  Future<void> addCommunityRating(String recipeId, int score) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      await _supabase.from('recipe_ratings').insert({
+        'recipe_id': recipeId,
+        'user_id': user?.id,
+        'rating': score,
+      });
+    } catch (e) {
+      print("Error al calificar: $e");
+    }
+  }
+
+  Future<void> addCommunityComment(String recipeId, String text) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      await _supabase.from('recipe_comments').insert({
+        'recipe_id': recipeId,
+        'user_id': user?.id,
+        'user_name': user?.userMetadata?['full_name'] ?? 'Anónimo',
+        'comment': text,
+      });
+    } catch (e) {
+      print("Error al comentar: $e");
+    }
+  }
+
+  // ==========================================
+  // 2. RECETAS DEL SISTEMA / ADMIN (Recipes)
+  // ==========================================
+
   Future<List<Recipe>> fetchRecipes() async {
     try {
-      final response = await _supabase.from('Recipes').select('''
+      final response = await _supabase
+          .from('Recipes')
+          .select('''
         *,
         "Recipe_Ingredients" (
           amount,
@@ -21,10 +129,8 @@ class RecipeService {
         "Recipe_Tags" (
           tag_id
         )
-      ''').order('created_at', ascending: false); // Ordenar por fecha
-
-      // Nota: Eliminé .eq('is_validated', true) porque como ADMIN quieres ver todas,
-      // incluso las no validadas para poder editarlas.
+      ''')
+          .order('created_at', ascending: false);
 
       return (response as List).map((data) => Recipe.fromMap(data)).toList();
     } catch (e) {
@@ -33,10 +139,8 @@ class RecipeService {
     }
   }
 
-  // --- CREAR ---
   Future<void> createRecipe(Recipe recipe) async {
     try {
-      // 1. Insertar la Receta base y obtener el ID generado
       final recipeData = {
         'title': recipe.title,
         'description': recipe.description,
@@ -44,7 +148,7 @@ class RecipeService {
         'cooking_time': recipe.cookingTime,
         'difficulty': recipe.difficulty,
         'nutrition': recipe.nutrition,
-        'is_validated': true, // Como admin, la creamos validada
+        'is_validated': true,
       };
 
       final newRecipeRes = await _supabase
@@ -52,67 +156,54 @@ class RecipeService {
           .insert(recipeData)
           .select('id')
           .single();
-      
+
       final int newRecipeId = newRecipeRes['id'];
-
-      // 2. Insertar relaciones (Pasos, Ingredientes, Tags)
       await _insertRelations(newRecipeId, recipe);
-
     } catch (e) {
-      print("Error creando receta: $e");
       throw Exception('Error al crear receta: $e');
     }
   }
 
-  // --- ACTUALIZAR ---
   Future<void> updateRecipe(Recipe recipe) async {
     try {
-      // 1. Actualizar tabla base
-      await _supabase.from('Recipes').update({
-        'title': recipe.title,
-        'description': recipe.description,
-        'image_url': recipe.imageUrl,
-        'cooking_time': recipe.cookingTime,
-        'difficulty': recipe.difficulty,
-        'nutrition': recipe.nutrition,
-      }).eq('id', recipe.id);
+      await _supabase
+          .from('Recipes')
+          .update({
+            'title': recipe.title,
+            'description': recipe.description,
+            'image_url': recipe.imageUrl,
+            'cooking_time': recipe.cookingTime,
+            'difficulty': recipe.difficulty,
+            'nutrition': recipe.nutrition,
+          })
+          .eq('id', recipe.id);
 
-      // 2. Estrategia simple: Borrar relaciones antiguas y crear nuevas
-      // (Para evitar lógica compleja de diffing)
-      await _supabase.from('Recipe_Ingredients').delete().eq('recipe_id', recipe.id);
+      // Limpiar relaciones antiguas para re-insertarlas
+      await _supabase
+          .from('Recipe_Ingredients')
+          .delete()
+          .eq('recipe_id', recipe.id);
       await _supabase.from('Recipe_Steps').delete().eq('recipe_id', recipe.id);
       await _supabase.from('Recipe_Tags').delete().eq('recipe_id', recipe.id);
 
-      // 3. Insertar nuevas relaciones
       await _insertRelations(recipe.id, recipe);
-
     } catch (e) {
-      print("Error actualizando receta: $e");
       throw Exception('Error al actualizar receta: $e');
     }
   }
 
-  // --- ELIMINAR ---
   Future<void> deleteRecipe(int recipeId) async {
     try {
-      // Borrar relaciones primero (Cascade delete suele configurarse en BD, 
-      // pero por seguridad lo hacemos manual si no está configurado)
-      await _supabase.from('Recipe_Ingredients').delete().eq('recipe_id', recipeId);
-      await _supabase.from('Recipe_Steps').delete().eq('recipe_id', recipeId);
-      await _supabase.from('Recipe_Tags').delete().eq('recipe_id', recipeId);
-      
-      // Borrar receta principal
       await _supabase.from('Recipes').delete().eq('id', recipeId);
     } catch (e) {
-      print("Error eliminando receta: $e");
       throw Exception('Error al eliminar receta: $e');
     }
   }
 
-  // --- HELPERS (Lógica privada) ---
-  
+  // --- HELPERS PRIVADOS (Manejo de Relaciones) ---
+
   Future<void> _insertRelations(int recipeId, Recipe recipe) async {
-    // A. Insertar Pasos
+    // A. Pasos de preparación
     if (recipe.steps.isNotEmpty) {
       final stepsData = recipe.steps.asMap().entries.map((entry) {
         return {
@@ -124,46 +215,44 @@ class RecipeService {
       await _supabase.from('Recipe_Steps').insert(stepsData);
     }
 
-    // B. Insertar Tags
+    // B. Etiquetas (Tags)
     if (recipe.tagIds.isNotEmpty) {
-      final tagsData = recipe.tagIds.map((tagId) => {
-        'recipe_id': recipeId,
-        'tag_id': tagId,
-      }).toList();
+      final tagsData = recipe.tagIds
+          .map((tagId) => {'recipe_id': recipeId, 'tag_id': tagId})
+          .toList();
       await _supabase.from('Recipe_Tags').insert(tagsData);
     }
 
-    // C. Insertar Ingredientes (Lógica compleja: Buscar ID por nombre o Crear)
+    // C. Ingredientes (Lógica de nombre -> ID)
     for (var ing in recipe.ingredients) {
-      // 1. Buscar si el ingrediente ya existe
       final existingIng = await _supabase
           .from('Ingredient')
           .select('ingredient_id')
-          .ilike('name', ing.name) // Case insensitive
+          .ilike('name', ing.name)
           .maybeSingle();
 
       int ingredientId;
-
       if (existingIng != null) {
         ingredientId = existingIng['ingredient_id'];
       } else {
-        // 2. Si no existe, crearlo
-        final newIng = await _supabase.from('Ingredient').insert({
-          'name': ing.name,
-          // Valores por defecto si no los tienes en el form
-          'exp_time': 7, 
-          'density_g/ml': 1,
-          'average_weight': 100
-        }).select('ingredient_id').single();
+        final newIng = await _supabase
+            .from('Ingredient')
+            .insert({
+              'name': ing.name,
+              'exp_time': 7,
+              'density_g/ml': 1,
+              'average_weight': 100,
+            })
+            .select('ingredient_id')
+            .single();
         ingredientId = newIng['ingredient_id'];
       }
 
-      // 3. Vincular en Recipe_Ingredients
       await _supabase.from('Recipe_Ingredients').insert({
         'recipe_id': recipeId,
         'ingredient_id': ingredientId,
         'amount': ing.amount,
-        'unit_abbreviation': ing.unit, // Asegúrate que esta unidad exista en tabla Unit
+        'unit_abbreviation': ing.unit,
       });
     }
   }
