@@ -35,6 +35,58 @@ class ProfileService {
     }
   }
 
-  //Se actualizan los datos de la tabla (Excepto user_id y email)
+  //Se actualiza el Mail de autenticación
+  Future<String?> updateAuthMail(String? newEmail) async {
+    try {
+      // Primero se verifica que haya un usuario logueado
+      final userID = currentUser?.id;
+      if (userID == null) return "Logged out";
+
+      //Se actualiza el email en auth
+      final attribute = UserAttributes (email: newEmail);
+      await _supabase.auth.updateUser(attribute);
+
+      //Se actualiza el email en la tabla de perfil
+      await _supabase.from('Profile').update({
+        'email': newEmail
+    }).eq('user_id', userID);
+
+      return null; //Nada falla
+    } catch (e) {
+      return e.toString(); //Error
+    }
+  }
   
+  //Se actualiza la contraseña de autenticación
+  Future<String?> updateAuthPass(String? newPassword) async {
+    try {
+      //Se actualiza el email en auth
+      final attribute = UserAttributes (password: newPassword);
+      await _supabase.auth.updateUser(attribute);
+    
+      return null; //Nada falla
+    } catch (e) {
+      return e.toString(); //Error
+    }
+  }
+
+  //Se actualiza el username
+  Future<String?> updateUsername(String? newUsername) async {
+    try {
+      final userID = currentUser?.id;
+      if (userID == null) return "Logged out";
+
+      //Se carga a la BD
+      await _supabase.from('Profile').update({
+        'username': newUsername
+      }).eq('user_id', userID);
+
+      return null; //Todo sale bien
+    } catch (e) {
+      return e.toString();
+    }
+
+    
+  }
+
 }

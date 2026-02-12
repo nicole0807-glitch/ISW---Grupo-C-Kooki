@@ -19,7 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Variable de estado para la animación de carga
   bool _isLoading = false; 
 
-  // --- LÓGICA DE CIERRE DE SESIÓN CORREGIDA ---
+  // --- LÓGICA DE CIERRE DE SESIÓN  ---
   Future<void> _handleLogout() async {
     final authController = AuthController();
     final homeController = context.read<HomeController>();
@@ -51,18 +51,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   //Variables de sesión
+  /*
   String? _userName;
   String? _avatarURL;
+  */
 
   //Instancia del backen de profile
+  late Future<Map<String, dynamic>?> _profileFuture;
   final ProfileService _profileService = ProfileService();
 
   @override
   void initState() {
     super.initState();
-    _loadUserData(); //Función de abajo
+    _profileFuture = _profileService.getProfileData();
   }
 
+  /*
   //Función para cargar los datos del usuario
   Future<void> _loadUserData() async {
     //Si no hay usuario logueado no se ejecuta
@@ -73,16 +77,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       return;
     }
-
+    
     //Si hay usuario registrado se obtienen sus datos
     final data = await _profileService.getProfileData();
-
+    
     if (data != null && mounted) {
       //Se asignan los datos a las variables:
       _userName = data['username'] ?? 'Usuario';
       _avatarURL = data['avatar_url'];
     }
+    
   }
+  */
 
   // --- DISEÑO CIERRE DE SESIÓN ---
   void _showLogoutDialog(BuildContext context) {
@@ -141,9 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // --- TUS PLACEHOLDERS Y DISEÑO ---
-                    const Text("Título (Opcional)", textAlign: TextAlign.center),
-                    const SizedBox(height: 100, child: Placeholder(color: Colors.blueGrey)),
-                    const SizedBox(height: 20),
+                    _buildProfileHeader(),
 
                     const Text("Título (Opcional)", textAlign: TextAlign.center),
                     const SizedBox(height: 100, child: Placeholder(color: Colors.teal)),
@@ -261,32 +265,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // -- Widget Información del perfil --
   Widget _buildProfileHeader() {
-    //Obtener el email desde el backend
-    final String email = _profileService.currentUser?.email ?? 'no email';
+    //Se usa futureBuilder para esperar los datos
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _profileFuture,
+      builder: (context, snapshot) {
 
-    return Column (
-      children: [
-        //Avatar del usuario
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: Colors.grey.shade200,
-          backgroundImage: _avatarURL != null ? NetworkImage(_avatarURL!) : null,
-          child: _avatarURL == null
-            ? const Icon(Icons.person, size: 50, color: Colors.grey)
-            : null,
-        ),
-        // Username
-        const SizedBox(height: 16),
-        Text(
-          _userName ?? "Cargando...",
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        //email
-        Text(
-          email,
-          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-        ),
-      ]
+        //Aún está cargando
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        //Error
+        if (snapshot.hasError) {
+          return const Text("Error al cargar perfil");
+        }
+
+        //Los datos ya fueron recibidos
+        final data = snapshot.data;
+
+        //Se verifica que data no sea null
+        final userName = (data != null && data['username'] != null) 
+          ? data['username'] 
+          : "Usuario";
+          
+        final avatarURL = (data != null) ? data['avatar_url'] : null;
+      
+        // email obtenido de auth
+        final email = _profileService.currentUser?.email ?? 'Sin email';
+
+        //Se crea la UI
+        return Column(
+          children: [
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey.shade200,
+
+              //Lógica por si el url es NULL o ""
+              backgroundImage: (avatarURL != null && avatarURL.isNotEmpty)
+              ? NetworkImage(avatarURL) : null,
+              child: (avatarURL == null || avatarURL.isEmpty)
+              ? const Icon(Icons.person, size: 50, color: Colors.grey)
+              : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              userName,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              email,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+          ]
+        );
+      }
     );
   }
   
