@@ -34,4 +34,7 @@ class ProfileService {
       return null;
     }
   }
+
+  //Se actualizan los datos de la tabla (Excepto user_id y email)
+  
 }
