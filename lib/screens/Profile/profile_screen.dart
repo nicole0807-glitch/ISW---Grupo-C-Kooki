@@ -1,6 +1,7 @@
 // ignore_for_file: unused_local_variable, unused_element
 
 import 'package:flutter/material.dart';
+import 'package:kooki/screens/Profile/personal_info_screen.dart';
 import 'package:kooki/services/supabase_service.dart';
 import 'package:provider/provider.dart'; // Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
@@ -164,7 +165,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       text: "Información Personal",
                       icon: Icons.person,
                       baseColor: Colors.blueAccent,
-                      onTap: () { print("Info"); },
+                      onTap: () { 
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PersonalInfoScreen()),
+                        ).then((_) {
+                          //Se recarga la página cuando el usuario vuelva
+                          setState(() {
+                            _profileFuture = _profileService.getProfileData();
+                          });
+                        });
+                      },
                     ),
                     
                     _buildMenuButton(

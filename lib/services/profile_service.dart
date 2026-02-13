@@ -89,4 +89,21 @@ class ProfileService {
     
   }
 
+  //Verificación de contraseña actual
+  Future <bool> validateCurrentPassword(String password) async {
+    final email = currentUser?.email;
+    if (email == null) return false;
+
+    try {
+      //Intento de inicio de sesión
+      await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      return true; //Inicio correctamente
+    } catch (e) {
+      return false; //Falló. Contraseña incorrecta.
+    }
+  }
+
 }
