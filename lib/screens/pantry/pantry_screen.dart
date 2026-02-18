@@ -40,7 +40,7 @@ class _PantryScreenState extends State<PantryScreen> {
             ),
             const Spacer(),
             TextButton(
-              onPressed: () => controller.clearFilters(),
+              onPressed: () => controller.clearAll(context),
               child: const Text(
                 'Clear All',
                 style: TextStyle(

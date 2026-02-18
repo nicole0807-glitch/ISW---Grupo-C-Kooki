@@ -36,10 +36,14 @@ class Ingredient {
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     final master = json['Ingredient'] as Map<String, dynamic>?;
+
+    // CRÍTICO: El PK de Pantry también se llama 'ingredient_id'
+    // Entonces pantryId E ingredientMasterId vienen del mismo campo
+    final ingredientIdFromDB = json['ingredient_id'] as int?;
     
     return Ingredient(
-      pantryId: json['pantry_id'] as int?,
-      ingredientMasterId: json['ingredient_id'] as int,  // FK
+      pantryId: ingredientIdFromDB,              // ← PK de Pantry
+      ingredientMasterId: ingredientIdFromDB ?? 0,
       userId: json['user_id'] as String,
       name: master?['name'] as String? ?? json['name'] as String? ?? 'Desconocido',
       category: json['category'] as String? ?? 'Other',
