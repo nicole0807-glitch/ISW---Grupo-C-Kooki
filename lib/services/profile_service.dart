@@ -51,6 +51,9 @@ class ProfileService {
         'email': newEmail
     }).eq('user_id', userID);
 
+    //Refrescar sesión
+    await _supabase.auth.refreshSession();
+
       return null; //Nada falla
     } catch (e) {
       return e.toString(); //Error
@@ -80,6 +83,9 @@ class ProfileService {
       await _supabase.from('Profile').update({
         'username': newUsername
       }).eq('user_id', userID);
+
+      //Refrescar sesión
+      await _supabase.auth.refreshSession();
 
       return null; //Todo sale bien
     } catch (e) {
