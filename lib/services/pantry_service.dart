@@ -84,15 +84,33 @@ class PantryService {
     }
   }
 
-  /// Delete ingredient
-  Future<void> deleteIngredient(String ingredientId) async {
+   /// Eliminar un ingrediente por pantryId
+  Future<void> deleteIngredient(String pantryId) async {
     try {
+      print('🗑️ Eliminando ingredient_id: $pantryId');
       await _supabase
           .from(_tableName)
           .delete()
-          .eq('ingredient_id', int.parse(ingredientId));
+          .eq('ingredient_id', int.parse(pantryId));  // ← CAMBIO: pantry_id → ingredient_id
+      print('✅ Eliminado correctamente');
     } catch (e) {
+      print('❌ Error eliminando: $e');
       throw Exception('Error al eliminar: $e');
+    }
+  }
+
+  /// Eliminar TODOS los ingredientes del usuario (Clear All)
+  Future<void> deleteAllIngredients(String userId) async {
+    try {
+      print('🗑️ Eliminando TODOS los ingredientes del usuario: $userId');
+      await _supabase
+          .from(_tableName)
+          .delete()
+          .eq('user_id', userId);
+      print('✅ Despensa vaciada correctamente');
+    } catch (e) {
+      print('❌ Error en deleteAll: $e');
+      throw Exception('Error al vaciar despensa: $e');
     }
   }
 

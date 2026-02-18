@@ -166,12 +166,29 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
 
       bool success;
       if (widget.ingredient == null) {
+        print('🆕 Agregando nuevo ingrediente...');
         success = await controller.addIngredient(ingredient);
+        print('🔵 addIngredient retornó: $success');
       } else {
+        print('✏️ Actualizando ingrediente...');
         success = await controller.updateIngredient(ingredient);
+        print('🔵 updateIngredient retornó: $success');
       }
 
-      if (success && mounted) Get.back();
+      print('🔍 success: $success, mounted: $mounted');
+
+      if (success && mounted) {
+        print('✅ Cerrando pantalla...');
+        // Esperar para que se vea el snackbar antes de cerrar
+        await Future.delayed(const Duration(milliseconds: 900));
+        
+        // Intentar con Navigator en lugar de GetX
+        Navigator.of(context).pop();
+        
+        print('✅ Pantalla cerrada');
+      } else {
+        print('❌ NO se cierra - success: $success, mounted: $mounted');
+      }
     } catch (e) {
       print('❌ Error: $e');
       Get.snackbar('Error', e.toString());
