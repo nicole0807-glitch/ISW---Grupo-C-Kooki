@@ -10,6 +10,8 @@ class Recipe {
   final List<RecipeIngredient> ingredients;
   final List<String> steps;
   final List<int> tagIds;
+  final String status; 
+  String? reviewerName;
 
   Recipe({
     required this.id,
@@ -23,17 +25,20 @@ class Recipe {
     required this.ingredients,
     required this.steps,
     required this.tagIds,
+    this.reviewerName,
+    this.status = 'pending', // Valor por defecto
   });
 
   factory Recipe.fromMap(Map<String, dynamic> map) {
-    // 1. Extraemos y ordenamos los pasos. 
-    // Usamos el nombre exacto de la llave devuelta por el servicio
+    // 1. Procesamiento de Pasos
     final rawSteps = List.from(map['Recipe_Steps'] ?? []);
     rawSteps.sort((a, b) => (a['step_order'] as int).compareTo(b['step_order'] as int));
     
     final List<String> orderedInstructions = rawSteps
         .map((s) => s['instruction'] as String)
         .toList();
+
+    // 2. Procesamiento de Tags
     final List<int> tags = (map['Recipe_Tags'] as List? ?? [])
         .map((t) => t['tag_id'] as int)
         .toList();
@@ -48,9 +53,10 @@ class Recipe {
       difficulty: map['difficulty'],
       rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
       nutrition: map['nutrition'] is Map ? map['nutrition'] : {},
-      // 2. Mapeo de ingredientes con validación de nulidad para la relación 'Ingredient'
+      // --- MAPEO DEL NUEVO CAMPO DESDE SUPABASE ---
+      status: map['status'] ?? 'pendiente', 
+      
       ingredients: (map['Recipe_Ingredients'] as List? ?? []).map((i) {
-        // Accedemos de forma segura a Ingredient['name']
         final ingredientData = i['Ingredient'] as Map<String, dynamic>?;
         return RecipeIngredient(
           name: ingredientData?['name'] ?? 'Ingrediente desconocido',

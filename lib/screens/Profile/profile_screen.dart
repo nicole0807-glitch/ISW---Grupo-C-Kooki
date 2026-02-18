@@ -1,4 +1,7 @@
+// ignore_for_file: unused_local_variable, unused_element
+
 import 'package:flutter/material.dart';
+import 'package:kooki/services/supabase_service.dart';
 import 'package:provider/provider.dart'; // Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart'; // Necesario para acceder a clearStatus()
@@ -25,11 +28,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       // 1. Ejecutar logout en Supabase
-      await authController.logout();
-      
-      // 2. Limpiar el estado de administrador localmente
-      homeController.clearStatus();
-
+     context.read<HomeController>().clearStatus(); 
+    
+    // 2. Sign out de Supabase
+    final supabaseService = SupabaseService(); 
+    await supabaseService.signOut();
       if (mounted) {
         // 3. Navegación limpia al login
         Navigator.of(context).pushAndRemoveUntil(
