@@ -40,6 +40,7 @@ class SupabaseService {
       // 3. Extracción robusta del nombre del rol
       final roleData = response['Role'];
       String? roleName;
+      
 
       if (roleData is Map) {
         roleName = roleData['name']?.toString();

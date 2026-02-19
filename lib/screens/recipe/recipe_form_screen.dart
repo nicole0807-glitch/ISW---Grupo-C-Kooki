@@ -1,4 +1,6 @@
+import 'dart:typed_data'; // Necesario para compatibilidad Web/Móvil
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:kooki/controllers/recipe_controller.dart';
 import 'package:kooki/models/recipe_model.dart';
@@ -20,9 +22,11 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   late TextEditingController _imgUrlCtrl;
   String? _difficulty;
 
-  // 1. Definimos la lista maestra de opciones permitidas (Coincide con el SQL Constraint)
-  final List<String> _difficultyOptions = ["Fácil", "Media", "Difícil"];
+  // Variables para la imagen (Compatibilidad total)
+  Uint8List? _selectedImageBytes;
+  String? _selectedFileName;
 
+  final List<String> _difficultyOptions = ["Fácil", "Media", "Difícil"];
   List<RecipeIngredient> _ingredients = [];
   List<String> _steps = [];
 
@@ -35,12 +39,10 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     _timeCtrl = TextEditingController(text: r?.cookingTime ?? '');
     _imgUrlCtrl = TextEditingController(text: r?.imageUrl ?? '');
     
-    // 2. SEGURIDAD: Validar que el valor de la DB exista en nuestra lista
-    // Esto evita la pantalla roja si el dato viene nulo o incorrecto
     if (r?.difficulty != null && _difficultyOptions.contains(r!.difficulty)) {
       _difficulty = r.difficulty;
     } else {
-      _difficulty = null; // O _difficultyOptions.first si prefieres un valor por defecto
+      _difficulty = null;
     }
     
     if (r != null) {
@@ -58,8 +60,35 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     super.dispose();
   }
 
+  // Selección de imagen: Solo Galería
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _selectedImageBytes = bytes;
+        _selectedFileName = image.name;
+        _imgUrlCtrl.clear(); // Limpiamos la URL manual si se sube un archivo
+      });
+    }
+  }
+
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Validación de imagen
+    if (_selectedImageBytes == null && _imgUrlCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Agrega una imagen de galería o una URL válida")),
+      );
+      return;
+    }
+
     if (_ingredients.isEmpty || _steps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Añade al menos un ingrediente y un paso")),
@@ -67,11 +96,11 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
       return;
     }
 
-    final newRecipe = Recipe(
+    final recipeToProcess = Recipe(
       id: widget.recipe?.id ?? 0,
       title: _titleCtrl.text,
       description: _descCtrl.text,
-      imageUrl: _imgUrlCtrl.text,
+      imageUrl: _imgUrlCtrl.text, // El controller decidirá si usar esta o la subida
       cookingTime: _timeCtrl.text,
       difficulty: _difficulty,
       nutrition: widget.recipe?.nutrition ?? {},
@@ -79,12 +108,17 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
       steps: _steps,
       tagIds: widget.recipe?.tagIds ?? [], 
       rating: widget.recipe?.rating ?? 0.0,
-      status: widget.recipe?.status ?? 'pendiente', // Preservamos el estado actual
+      status: widget.recipe?.status ?? 'pendiente',
     );
 
     final success = await context
         .read<RecipeAdminController>()
-        .createOrUpdateRecipe(newRecipe, isEdit: widget.recipe != null);
+        .createOrUpdateRecipe(
+          recipeToProcess, 
+          isEdit: widget.recipe != null,
+          imageBytes: _selectedImageBytes,
+          fileName: _selectedFileName,
+        );
 
     if (success && mounted) Navigator.pop(context);
   }
@@ -134,15 +168,62 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
         child: Form(
           key: _formKey,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            
+            // --- SECCIÓN DE IMAGEN ---
+            Text("Imagen de la Receta", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[800])),
+            const SizedBox(height: 12),
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300),
+                    image: _selectedImageBytes != null 
+                      ? DecorationImage(image: MemoryImage(_selectedImageBytes!), fit: BoxFit.cover)
+                      : (_imgUrlCtrl.text.isNotEmpty 
+                          ? DecorationImage(
+                              image: NetworkImage(_imgUrlCtrl.text), 
+                              fit: BoxFit.cover,
+                              onError: (_, __) => const Icon(Icons.broken_image),
+                            )
+                          : null)
+                  ),
+                  child: (_selectedImageBytes == null && _imgUrlCtrl.text.isEmpty)
+                      ? Column(mainAxisAlignment: MainAxisAlignment.center, children: const [
+                          Icon(Icons.cloud_upload_outlined, size: 48, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text("Toca para subir desde galería", style: TextStyle(color: Colors.grey))
+                        ])
+                      : null,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _imgUrlCtrl, 
+              decoration: InputDecoration(
+                labelText: "O pega un URL de imagen directo", 
+                hintText: "https://ejemplo.com/imagen.jpg",
+                prefixIcon: const Icon(Icons.link),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+              ), 
+              onChanged: (v) => setState(() { _selectedImageBytes = null; }), 
+            ),
+
+            const SizedBox(height: 24),
             TextFormField(
               controller: _titleCtrl, 
-              decoration: const InputDecoration(labelText: "Título", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))), 
+              decoration: const InputDecoration(labelText: "Título de la Receta", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))), 
               validator: (v) => v!.isEmpty ? "El título es obligatorio" : null
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _descCtrl, 
-              decoration: const InputDecoration(labelText: "Descripción", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))), 
+              decoration: const InputDecoration(labelText: "Descripción corta", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))), 
               maxLines: 2
             ),
             const SizedBox(height: 16),
@@ -155,11 +236,10 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
               const SizedBox(width: 16),
               Expanded(child: DropdownButtonFormField<String>(
                 value: _difficulty,
-                // 3. Usamos la lista de opciones sanitizada
                 items: _difficultyOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                 onChanged: (v) => setState(() => _difficulty = v),
                 decoration: const InputDecoration(labelText: "Dificultad", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
-                validator: (v) => v == null ? "Selecciona una dificultad" : null,
+                validator: (v) => v == null ? "Requerido" : null,
               )),
             ]),
             
@@ -220,7 +300,6 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
                   backgroundColor: const Color(0xFF13EC5B),
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
                 ),
                 onPressed: controller.isLoading ? null : _submit,
                 child: controller.isLoading 
