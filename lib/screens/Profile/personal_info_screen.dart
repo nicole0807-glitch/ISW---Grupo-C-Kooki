@@ -26,6 +26,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   }
 
   //Widget principal
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 246, 248, 246),

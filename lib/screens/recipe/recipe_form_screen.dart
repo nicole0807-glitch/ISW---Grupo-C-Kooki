@@ -235,7 +235,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
               )),
               const SizedBox(width: 16),
               Expanded(child: DropdownButtonFormField<String>(
-                value: _difficulty,
+                initialValue: _difficulty,
                 items: _difficultyOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                 onChanged: (v) => setState(() => _difficulty = v),
                 decoration: const InputDecoration(labelText: "Dificultad", border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),

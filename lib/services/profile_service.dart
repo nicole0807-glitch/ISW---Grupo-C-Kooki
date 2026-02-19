@@ -1,5 +1,4 @@
 
-import 'package:flutter/rendering.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 //Se importa supabase para constuir una instancia privada para manejar el perfil. Esto ya incluye auth.
 

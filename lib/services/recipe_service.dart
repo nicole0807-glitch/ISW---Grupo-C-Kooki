@@ -1,6 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/recipe_model.dart';
-import 'dart:io';
 import 'dart:typed_data'; // Necesario para Uint8List
 
 class RecipeService {

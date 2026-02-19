@@ -3,7 +3,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../models/ingredient.dart';
 import '../../models/ingredient_master.dart';
 import '../../data/repositories/ingredient_master_repository.dart';
@@ -35,7 +34,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   // ignore: unused_field
   File? _imageFile;
   bool _isLoading = false;
-  bool _isSearching = false;
+  final bool _isSearching = false;
 
   final List<String> _categories = [
     'Produce',
@@ -403,7 +402,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedUnit,
+                      initialValue: _selectedUnit,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),

@@ -4,6 +4,7 @@ import '../../utils/app_colors.dart';
 import '../../controllers/pantry_controller.dart';
 import '../../services/notification_service.dart';
 import 'home_screen_content.dart';
+import 'search_screen.dart';
 import '../Profile/profile_screen.dart';
 import '../pantry/pantry_screen.dart';
 
@@ -21,7 +22,7 @@ class _MainLayoutState extends State<MainLayout> {
     const PantryScreen(),
     const Center(child: Text("Plan")),
     const HomeScreenContent(),
-    const Center(child: Text("Search")),
+    const SearchScreen(),
     const ProfileScreen(),
   ];
 

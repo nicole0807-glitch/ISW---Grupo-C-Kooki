@@ -19,6 +19,7 @@ dependencies:
   fl_chart: ^0.66.0
   google_fonts: ^6.1.0
   intl: ^0.19.0
+  shared_preferences: ^2.5.4
 
 dev_dependencies:
   flutter_test:
@@ -32,3 +33,4 @@ flutter:
     # - assets/logo.png
     - assets/imagen_main.png
     - assets/imagen_boton_home.png
+    - assets/

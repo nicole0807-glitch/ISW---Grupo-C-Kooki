@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../models/recipe_model.dart';
+import '../../../controllers/favorites_controller.dart';
 import '../../../utils/app_colors.dart';
 import '../../recipe/recipe_detail_screen.dart';
 
@@ -11,6 +13,8 @@ class RecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Lógica dinámica: solo mostramos el label si la calificación es >= 4.5
+    final favorites = context.watch<FavoritesController>();
+    final isFavorite = favorites.isFavorite(recipe.id);
     final bool isTopRated = recipe.rating >= 4.5;
 
     return InkWell(
@@ -72,10 +76,12 @@ class RecipeCard extends StatelessWidget {
                     radius: 18,
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.favorite, color: Colors.red, size: 20),
-                      onPressed: () {
-                        // TODO: Implementar lógica de favoritos en Supabase
-                      },
+                      icon: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                      onPressed: () => favorites.toggleFavorite(recipe.id),
                     ),
                   ),
                 ),

@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:kooki/screens/Profile/diet_preferences_screen.dart';
 import 'package:kooki/screens/Profile/personal_info_screen.dart';
 import 'package:kooki/services/supabase_service.dart';
-import 'package:provider/provider.dart'; // Necesario para limpiar el estado
+// Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 import '../../controllers/goal_controller.dart'; 
