@@ -11,6 +11,7 @@ import '../../services/admin_service.dart';
 import '../../services/recipe_service.dart';
 import '../../utils/app_colors.dart';
 import '../admin/admin_control_panel_screen.dart';
+import '../recipe/validation_queue_screen.dart';
 import '../recipe/publish_recipe_screen.dart';
 import '../recipe/user_recipe_detail_screen.dart';
 
@@ -69,6 +70,12 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   Widget build(BuildContext context) {
     final homeController = context.watch<HomeController>();
     final favorites = context.watch<FavoritesController>();
+    final canValidate = homeController.hasPermission(AppPermission.validateRecipes);
+    final canOpenAdmin = homeController.hasPermission(AppPermission.openAdminDashboard);
+    final canModerateCommunity =
+        homeController.hasPermission(AppPermission.moderateCommunityRecipes);
+    final canPublishCommunity =
+        homeController.hasPermission(AppPermission.publishCommunityRecipe);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -82,7 +89,23 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             children: [
               _buildHeroBanner(),
               const SizedBox(height: 20),
-              if (homeController.isAdmin) ...[
+              if (canValidate) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ValidationQueueScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.fact_check),
+                    label: const Text('Cola de validación'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (canOpenAdmin) ...[
                 _buildAdminPanelButton(context),
                 const SizedBox(height: 20),
               ],
@@ -155,7 +178,10 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                 },
               ),
               const SizedBox(height: 40),
-              _buildCommunityHeader(context),
+              _buildCommunityHeader(
+                context,
+                canPublishCommunity: canPublishCommunity,
+              ),
               const SizedBox(height: 15),
               FutureBuilder<List<UserRecipe>>(
                 future: _recipeService.fetchCommunityRecipes(),
@@ -177,7 +203,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       itemBuilder: (context, index) => _buildUserRecipeCard(
                         context,
                         communityRecipes[index],
-                        homeController.isAdmin,
+                        canModerateCommunity,
                       ),
                     ),
                   );
@@ -461,7 +487,10 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     );
   }
 
-  Widget _buildCommunityHeader(BuildContext context) {
+  Widget _buildCommunityHeader(
+    BuildContext context, {
+    required bool canPublishCommunity,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -478,17 +507,20 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ),
           ],
         ),
-        IconButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PublishRecipeScreen()),
-          ),
-          icon: const Icon(
-            Icons.add_circle,
-            color: AppColors.nutveDarkGreen,
-            size: 30,
-          ),
-        ),
+        if (canPublishCommunity)
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PublishRecipeScreen()),
+            ),
+            icon: const Icon(
+              Icons.add_circle,
+              color: AppColors.nutveDarkGreen,
+              size: 30,
+            ),
+          )
+        else
+          const SizedBox(width: 30),
       ],
     );
   }

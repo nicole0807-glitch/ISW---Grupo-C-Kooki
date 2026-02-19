@@ -35,8 +35,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   }
 
   Future<void> _loadRolesIfAdmin() async {
-    final isAdmin = context.read<HomeController>().isAdmin;
-    if (!isAdmin) return;
+    final canManageRoles = context.read<HomeController>().canManageUsers;
+    if (!canManageRoles) return;
 
     setState(() => _rolesLoading = true);
     final roles = await _profileService.getAvailableRoles();
@@ -79,7 +79,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   //Widget principal
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<HomeController>().isAdmin;
+    final canManageRoles = context.watch<HomeController>().canManageUsers;
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 246, 248, 246),
@@ -150,7 +150,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
                 //Tarjeta de email y contraseña
                 _buildSensitiveSection(email),
-                if (isAdmin) ...[
+                if (canManageRoles) ...[
                   const SizedBox(height: 20),
                   _buildRoleSection(),
                 ],

@@ -18,6 +18,7 @@ class PremiumService {
 
   static const _premiumKey = 'premium_is_active';
   static const _premiumUntilKey = 'premium_until_iso';
+  static const _premiumAutoRenewKey = 'premium_auto_renew';
   static const bool _forceDemoMode = true;
   static const bool _allowDemoFallback = true;
 
@@ -43,6 +44,26 @@ class PremiumService {
     final prefs = await SharedPreferences.getInstance();
     final untilIso = prefs.getString(_premiumUntilKey);
     return untilIso == null ? null : DateTime.tryParse(untilIso);
+  }
+
+  Future<bool> isAutoRenewEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_premiumAutoRenewKey) ?? false;
+  }
+
+  Future<void> setAutoRenewEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_premiumAutoRenewKey, enabled);
+
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    try {
+      await _supabase.from('Profile').update({
+        'premium_auto_renew': enabled,
+      }).eq('user_id', user.id);
+    } catch (_) {
+      // No bloquea si aún no existe columna en BD.
+    }
   }
 
   Future<PremiumPaymentResult> payMonthlyMembership() async {
@@ -149,7 +170,11 @@ class PremiumService {
   }
 
   Future<void> _activatePremiumNow() async {
-    final until = DateTime.now().add(const Duration(days: 30));
+    final currentUntil = await premiumUntil();
+    final base = (currentUntil != null && currentUntil.isAfter(DateTime.now()))
+        ? currentUntil
+        : DateTime.now();
+    final until = base.add(const Duration(days: 30));
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_premiumKey, true);
@@ -197,5 +222,6 @@ class PremiumService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_premiumKey);
     await prefs.remove(_premiumUntilKey);
+    await prefs.remove(_premiumAutoRenewKey);
   }
 }
