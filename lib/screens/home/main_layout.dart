@@ -8,6 +8,7 @@ import 'search_screen.dart';
 import '../Profile/profile_screen.dart';
 import '../pantry/pantry_screen.dart';
 import '../assistant/assistant_screen.dart';
+import '../plan/premium_plan_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -25,7 +26,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   final List<Widget> _screens = [
     const PantryScreen(),
-    const Center(child: Text("Plan")),
+    const PremiumPlanScreen(),
     const HomeScreenContent(),
     const SearchScreen(),
     const ProfileScreen(),
