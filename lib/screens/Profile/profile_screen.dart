@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:kooki/screens/Profile/diet_preferences_screen.dart';
+import 'package:kooki/screens/Profile/personal_info_screen.dart';
 import 'package:kooki/services/supabase_service.dart';
 import 'package:provider/provider.dart'; // Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
@@ -28,6 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // Prepare future for FutureBuilder and load other user data
+    _profileFuture = _profileService.getProfileData();
     _loadUserData();
   }
 
@@ -98,6 +102,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  //Variables de sesión
+  /*
+  String? _userName;
+  String? _avatarURL;
+  */
+
+  //Instancia del backen de profile
+  late Future<Map<String, dynamic>?> _profileFuture;
+  // final ProfileService _profileService = ProfileService();
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _profileFuture = _profileService.getProfileData();
+  // }
+
+  /*
+  //Función para cargar los datos del usuario
+  Future<void> _loadUserData() async {
+    //Si no hay usuario logueado no se ejecuta
+    if (!_profileService.isUserLoggedIn) {
+      setState(() {
+      _userName = "Desarrollador Test";
+      _avatarURL = "https://i.pravatar.cc/300"; // Una imagen aleatoria de internet
+      });
+      return;
+    }
+    
+    //Si hay usuario registrado se obtienen sus datos
+    final data = await _profileService.getProfileData();
+    
+    if (data != null && mounted) {
+      //Se asignan los datos a las variables:
+      _userName = data['username'] ?? 'Usuario';
+      _avatarURL = data['avatar_url'];
+    }
+    
+  }
+  */
+
+  // --- DISEÑO CIERRE DE SESIÓN ---
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -143,13 +188,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context, goalController, _) {
             if (_isLoading) return const Center(child: CircularProgressIndicator());
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildProfileHeader(),
-                  const SizedBox(height: 30),
+    return Scaffold(
+      
+      // --- LÓGICA CIERRE DE SESIÓN ---
+      // Si _isLoading es true, muestra el círculo.
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator()) 
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // --- TUS PLACEHOLDERS Y DISEÑO ---
+                    _buildProfileHeader(),
 
                   // SECCIÓN DE METAS (HU-27)
                   _buildSectionHeader(
@@ -163,9 +215,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (goalController.currentGoal == null)
                     _buildSetupButton(() => _refreshGoals(context)),
 
-                  const SizedBox(height: 30),
-                  const Divider(),
-                  const SizedBox(height: 20),
+                    // Botón de información personal
+                    _buildMenuButton(
+                      text: "Información Personal",
+                      icon: Icons.person,
+                      baseColor: Colors.blueAccent,
+                      onTap: () { 
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PersonalInfoScreen()),
+                        ).then((_) {
+                          //Se recarga la página cuando el usuario vuelva
+                          setState(() {
+                            _profileFuture = _profileService.getProfileData();
+                          });
+                        });
+                      },
+                    ),
+                    
+                    _buildMenuButton(
+                      text: "Preferencias de Dieta",
+                      icon: Icons.flatware,
+                      baseColor: Colors.orange,
+                      onTap: () { 
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DietPreferencesScreen()),
+                        ).then((_) {
+                          //Se recarga la página cuando el usuario vuelva
+                          setState(() {
+                            _profileFuture = _profileService.getProfileData();
+                          });
+                        });
+                      },
+                    ),
 
                   // OPCIONES DE CONFIGURACIÓN
                   const Text(
@@ -174,18 +257,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 15),
 
-                  _buildMenuButton(
-                    text: "Información Personal",
-                    icon: Icons.person_outline,
-                    baseColor: Colors.blueAccent,
-                    onTap: () {},
-                  ),
-                  _buildMenuButton(
-                    text: "Preferencias de Dieta",
-                    icon: Icons.flatware_outlined,
-                    baseColor: Colors.orange,
-                    onTap: () {},
-                  ),
+                  // _buildMenuButton(
+                  //   text: "Información Personal",
+                  //   icon: Icons.person_outline,
+                  //   baseColor: Colors.blueAccent,
+                  //   onTap: () {},
+                  // ),
+                  // _buildMenuButton(
+                  //   text: "Preferencias de Dieta",
+                  //   icon: Icons.flatware_outlined,
+                  //   baseColor: Colors.orange,
+                  //   onTap: () {},
+                  // ),
                   _buildMenuButton(
                     text: "Gestionar Suscripción",
                     icon: Icons.star_outline,
@@ -197,8 +280,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildLogoutButton(onTap: () => _showLogoutDialog(context)),
                 ],
               ),
-            );
-          },
+            ),
+            )
+    );
+        },
         ),
       ),
     );
@@ -207,19 +292,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // --- WIDGETS COMPONENTES ---
 
   Widget _buildProfileHeader() {
-    final String email = _profileService.currentUser?.email ?? 'invitado@mail.com';
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: Colors.grey.shade200,
-          backgroundImage: _avatarURL != null ? NetworkImage(_avatarURL!) : null,
-          child: _avatarURL == null ? const Icon(Icons.person, size: 50, color: Colors.grey) : null,
-        ),
-        const SizedBox(height: 15),
-        Text(_userName ?? "Cargando...", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        Text(email, style: TextStyle(color: Colors.grey.shade600)),
-      ],
+    //Se usa futureBuilder para esperar los datos
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _profileFuture,
+      builder: (context, snapshot) {
+
+        //Aún está cargando
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        //Error
+        if (snapshot.hasError) {
+          return const Text("Error al cargar perfil");
+        }
+
+        //Los datos ya fueron recibidos
+        final data = snapshot.data;
+
+        //Se verifica que data no sea null
+        final userName = (data != null && data['username'] != null) 
+          ? data['username'] 
+          : "Usuario";
+          
+        final avatarURL = (data != null) ? data['avatar_url'] : null;
+      
+        // email obtenido de auth
+        final email = _profileService.currentUser?.email ?? 'Sin email';
+
+        //Se crea la UI
+        return Column(
+          children: [
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey.shade200,
+
+              //Lógica por si el url es NULL o ""
+              backgroundImage: (avatarURL != null && avatarURL.isNotEmpty)
+              ? NetworkImage(avatarURL) : null,
+              child: (avatarURL == null || avatarURL.isEmpty)
+              ? const Icon(Icons.person, size: 50, color: Colors.grey)
+              : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              userName,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              email,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+          ]
+        );
+      }
     );
   }
 

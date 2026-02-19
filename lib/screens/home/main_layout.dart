@@ -305,7 +305,7 @@ class _MainLayoutState extends State<MainLayout> {
             label: 'Pantry',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
+            icon: Icon(Icons.calendar_month),
             label: 'Plan',
           ),
           BottomNavigationBarItem(
