@@ -1,0 +1,558 @@
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../controllers/premium_controller.dart';
+import '../../models/recipe_model.dart';
+import '../../services/goal_service.dart';
+import '../../services/recipe_service.dart';
+import '../../utils/app_colors.dart';
+import '../recipe/recipe_detail_screen.dart';
+
+enum _MealSlot { breakfast, lunch, snack, dinner }
+
+class PremiumPlanScreen extends StatefulWidget {
+  const PremiumPlanScreen({super.key});
+
+  @override
+  State<PremiumPlanScreen> createState() => _PremiumPlanScreenState();
+}
+
+class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
+  final RecipeService _recipeService = RecipeService();
+  final GoalService _goalService = GoalService();
+
+  final Map<DateTime, Map<_MealSlot, Recipe?>> _weeklyPlan = {};
+
+  late DateTime _weekStart;
+  late List<DateTime> _weekDays;
+  late DateTime _selectedDay;
+
+  List<Recipe> _recipes = [];
+  int _targetCalories = 2000;
+  bool _loadingPlan = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeWeek();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final premium = context.read<PremiumController>();
+      await premium.loadStatus();
+      if (!mounted) {
+        return;
+      }
+      if (premium.isPremium) {
+        await _loadGoalAndGenerate();
+      }
+    });
+  }
+
+  void _initializeWeek() {
+    final now = DateTime.now();
+    _weekStart = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+    _weekDays = List.generate(
+      7,
+      (index) => _weekStart.add(Duration(days: index)),
+    );
+    _selectedDay = _weekDays.first;
+  }
+
+  Future<void> _loadGoalAndGenerate() async {
+    setState(() => _loadingPlan = true);
+
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        final goal = await _goalService.getUserGoals(userId);
+        if (goal != null) {
+          _targetCalories = goal.targetCalories.round();
+        }
+      }
+
+      _recipes = await _recipeService.fetchRecipes();
+      _generateWeeklyPlan();
+    } catch (_) {
+      // Si falla la carga, mantenemos estado actual de forma segura.
+    } finally {
+      if (mounted) {
+        setState(() => _loadingPlan = false);
+      }
+    }
+  }
+
+  void _generateWeeklyPlan() {
+    if (_recipes.isEmpty) {
+      return;
+    }
+
+    _weeklyPlan.clear();
+
+    final breakfastTarget = _targetCalories * 0.25;
+    final lunchTarget = _targetCalories * 0.35;
+    final snackTarget = _targetCalories * 0.10;
+    final dinnerTarget = _targetCalories * 0.30;
+
+    for (var i = 0; i < _weekDays.length; i++) {
+      final day = _weekDays[i];
+      final rng = Random(day.millisecondsSinceEpoch);
+
+      _weeklyPlan[day] = {
+        _MealSlot.breakfast: _pickRecipeNearCalories(breakfastTarget, rng),
+        _MealSlot.lunch: _pickRecipeNearCalories(lunchTarget, rng),
+        _MealSlot.snack: rng.nextBool()
+            ? _pickRecipeNearCalories(snackTarget, rng)
+            : null, // merienda opcional
+        _MealSlot.dinner: _pickRecipeNearCalories(dinnerTarget, rng),
+      };
+    }
+
+    setState(() {});
+  }
+
+  Recipe? _pickRecipeNearCalories(double target, Random rng) {
+    if (_recipes.isEmpty) {
+      return null;
+    }
+
+    final sorted = [..._recipes]
+      ..sort(
+        (a, b) => (_extractCalories(a) - target)
+            .abs()
+            .compareTo((_extractCalories(b) - target).abs()),
+      );
+
+    final top = sorted.take(min(8, sorted.length)).toList();
+    return top[rng.nextInt(top.length)];
+  }
+
+  double _extractCalories(Recipe recipe) {
+    final n = recipe.nutrition;
+    final keys = ['calories', 'kcal', 'energy_kcal', 'cal'];
+
+    for (final key in keys) {
+      final value = n[key];
+      if (value is num) {
+        return value.toDouble();
+      }
+      if (value is String) {
+        final parsed = double.tryParse(value);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+
+    return 450.0;
+  }
+
+  Future<void> _editTargetCalories() async {
+    final ctrl = TextEditingController(text: _targetCalories.toString());
+
+    final newValue = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar objetivo calórico'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'Ej: 2000',
+            labelText: 'Calorías objetivo / día',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final parsed = int.tryParse(ctrl.text.trim());
+              Navigator.pop(context, parsed);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (newValue != null && newValue > 0) {
+      setState(() => _targetCalories = newValue);
+      _generateWeeklyPlan();
+    }
+  }
+
+  Future<void> _replaceMeal(DateTime day, _MealSlot slot) async {
+    if (_recipes.isEmpty) {
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (context, controller) {
+            return ListView.builder(
+              controller: controller,
+              itemCount: _recipes.length,
+              itemBuilder: (context, index) {
+                final recipe = _recipes[index];
+                return ListTile(
+                  title: Text(recipe.title),
+                  subtitle: Text('${_extractCalories(recipe).round()} kcal'),
+                  trailing: const Icon(Icons.swap_horiz),
+                  onTap: () {
+                    setState(() {
+                      _weeklyPlan[day]?[slot] = recipe;
+                    });
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final premium = context.watch<PremiumController>();
+
+    final untilText = premium.premiumUntil == null
+        ? 'No activo'
+        : '${premium.premiumUntil!.day}/${premium.premiumUntil!.month}/${premium.premiumUntil!.year}';
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(premium.isPremium, untilText),
+            const SizedBox(height: 16),
+            if (!premium.isPremium) ...[
+              _benefit('Plan semanal automático basado en metas/calorías'),
+              _benefit('Edición y reemplazo manual de comidas'),
+              _benefit('Calendario interactivo con recetas por día'),
+              const SizedBox(height: 20),
+              _paymentBox(),
+              const SizedBox(height: 20),
+              _payButton(premium),
+            ] else ...[
+              _plannerControls(),
+              const SizedBox(height: 16),
+              _weekCalendar(),
+              const SizedBox(height: 16),
+              _dayMeals(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header(bool isPremium, String untilText) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1F2937), Color(0xFF111827)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium, color: Colors.amber),
+              const SizedBox(width: 8),
+              Text(
+                isPremium ? 'Premium Activo' : 'Plan Premium',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isPremium
+                ? 'Tu membresía está activa hasta: $untilText'
+                : 'Suscríbete para generar tu plan semanal automático.',
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentBox() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: const Text(
+        'Pago mensual: USD 9.99. Conexión segura vía pasarela HTTPS.',
+        style: TextStyle(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _payButton(PremiumController premium) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.nutveDarkGreen,
+          foregroundColor: Colors.white,
+        ),
+        onPressed: premium.isLoading
+            ? null
+            : () async {
+                final ok = await context.read<PremiumController>().subscribeMonthly();
+                if (!context.mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      ok
+                          ? 'Pago exitoso. Se activó Premium y se envió comprobante.'
+                          : (context.read<PremiumController>().lastMessage ??
+                              'No se pudo completar la transacción.'),
+                    ),
+                  ),
+                );
+                if (ok) {
+                  await _loadGoalAndGenerate();
+                }
+              },
+        child: premium.isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : Text(premium.isPremium ? 'Renovar Membresía' : 'Pagar Membresía'),
+      ),
+    );
+  }
+
+  Widget _plannerControls() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Objetivo diario: $_targetCalories kcal',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _editTargetCalories,
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Editar calorías'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.nutveDarkGreen,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _loadingPlan ? null : _loadGoalAndGenerate,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Regenerar plan'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _weekCalendar() {
+    if (_loadingPlan) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Semana actual',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _weekDays.map((day) {
+              final selected = _isSameDate(day, _selectedDay);
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text('${_weekdayLabel(day.weekday)} ${day.day}/${day.month}'),
+                  selected: selected,
+                  onSelected: (_) => setState(() => _selectedDay = day),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dayMeals() {
+    final dayPlan = _weeklyPlan[_selectedDay];
+
+    if (dayPlan == null) {
+      return const Text('No hay plan para este día todavía.');
+    }
+
+    final slots = [_MealSlot.breakfast, _MealSlot.lunch, _MealSlot.snack, _MealSlot.dinner];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Comidas del ${_selectedDay.day}/${_selectedDay.month}',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        ...slots.map((slot) {
+          final recipe = dayPlan[slot];
+          return Card(
+            color: Colors.white,
+            child: ListTile(
+              title: Text(_slotLabel(slot)),
+              subtitle: Text(
+                recipe == null
+                    ? 'Sin asignar'
+                    : '${recipe.title} • ${_extractCalories(recipe).round()} kcal',
+              ),
+              leading: const Icon(Icons.restaurant_menu),
+              trailing: Wrap(
+                spacing: 6,
+                children: [
+                  IconButton(
+                    tooltip: 'Cambiar comida',
+                    onPressed: () => _replaceMeal(_selectedDay, slot),
+                    icon: const Icon(Icons.swap_horiz),
+                  ),
+                  IconButton(
+                    tooltip: 'Ver receta',
+                    onPressed: recipe == null
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => RecipeDetailScreen(recipe: recipe),
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.open_in_new),
+                  ),
+                ],
+              ),
+              onTap: recipe == null
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RecipeDetailScreen(recipe: recipe),
+                        ),
+                      );
+                    },
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  String _weekdayLabel(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Lun';
+      case DateTime.tuesday:
+        return 'Mar';
+      case DateTime.wednesday:
+        return 'Mie';
+      case DateTime.thursday:
+        return 'Jue';
+      case DateTime.friday:
+        return 'Vie';
+      case DateTime.saturday:
+        return 'Sab';
+      case DateTime.sunday:
+        return 'Dom';
+      default:
+        return '-';
+    }
+  }
+
+  String _slotLabel(_MealSlot slot) {
+    switch (slot) {
+      case _MealSlot.breakfast:
+        return 'Desayuno';
+      case _MealSlot.lunch:
+        return 'Almuerzo';
+      case _MealSlot.snack:
+        return 'Merienda (opcional)';
+      case _MealSlot.dinner:
+        return 'Cena';
+    }
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Widget _benefit(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: AppColors.nutveSelectionGreen),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    );
+  }
+}

@@ -12,7 +12,8 @@ import '../../controllers/goal_controller.dart';
 import '../auth/login_screen.dart';
 import '../../services/profile_service.dart';
 import '../goals/goal_registration_screen.dart';
-import '../recipe/widgets/macro_chart_widget.dart'; 
+import '../recipe/widgets/macro_chart_widget.dart';
+import '../plan/premium_plan_screen.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -273,7 +274,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     text: "Gestionar Suscripción",
                     icon: Icons.star_outline,
                     baseColor: Colors.green,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PremiumPlanScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 30),

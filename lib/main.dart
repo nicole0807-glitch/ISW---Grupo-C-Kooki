@@ -11,6 +11,7 @@ import 'controllers/auth_controller.dart';
 import 'screens/recipe/admin_recipes_screen.dart';
 import 'controllers/home_controller.dart';
 import 'controllers/favorites_controller.dart';
+import 'controllers/premium_controller.dart';
 import 'providers/ingredient_master_provider.dart';
 import 'package:get/get.dart';
 
@@ -31,6 +32,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HomeController()),
         ChangeNotifierProvider(
           create: (_) => FavoritesController()..loadFavorites(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PremiumController()..loadStatus(),
         ),
       ],
       child: const NutveApp(),
