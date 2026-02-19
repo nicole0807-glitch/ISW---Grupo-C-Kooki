@@ -1,59 +1,106 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// Widgets y Modelos
 import 'package:kooki/screens/recipe/widgets/quick_bite_card.dart';
 import 'package:kooki/screens/recipe/widgets/recipe_card.dart';
-import '../../utils/app_colors.dart';
-import '../../services/recipe_service.dart';
-import '../../services/admin_service.dart'; // Importante para la lógica de borrado
+import '../../controllers/favorites_controller.dart';
+import '../../controllers/home_controller.dart';
 import '../../models/recipe_model.dart';
 import '../../models/user_recipe_model.dart';
-
-// Controladores y Pantallas
-import '../../controllers/home_controller.dart';
-import '../admin/admin_control_panel_screen.dart'; // Tu nueva consola maestra
+import '../../services/admin_service.dart';
+import '../../services/recipe_service.dart';
+import '../../utils/app_colors.dart';
+import '../admin/admin_control_panel_screen.dart';
 import '../recipe/publish_recipe_screen.dart';
 import '../recipe/user_recipe_detail_screen.dart';
 
-class HomeScreenContent extends StatelessWidget {
+enum HomeRecipeFilter { all, topRated, quickBites, favorites }
+
+class HomeScreenContent extends StatefulWidget {
   const HomeScreenContent({super.key});
 
   @override
+  State<HomeScreenContent> createState() => _HomeScreenContentState();
+}
+
+class _HomeScreenContentState extends State<HomeScreenContent> {
+  final RecipeService _recipeService = RecipeService();
+
+  String _query = '';
+  HomeRecipeFilter _selectedFilter = HomeRecipeFilter.all;
+
+  List<Recipe> _applyFilters(List<Recipe> recipes, FavoritesController favorites) {
+    return recipes.where((recipe) {
+      final queryMatch =
+          _query.isEmpty ||
+          recipe.title.toLowerCase().contains(_query) ||
+          recipe.ingredients.any((i) => i.name.toLowerCase().contains(_query));
+
+      if (!queryMatch) {
+        return false;
+      }
+
+      switch (_selectedFilter) {
+        case HomeRecipeFilter.all:
+          return true;
+        case HomeRecipeFilter.topRated:
+          return recipe.rating >= 4.5;
+        case HomeRecipeFilter.quickBites:
+          return recipe.tagIds.contains(22);
+        case HomeRecipeFilter.favorites:
+          return favorites.isFavorite(recipe.id);
+      }
+    }).toList();
+  }
+
+  Widget _filterChip(String label, HomeRecipeFilter filter) {
+    final selected = _selectedFilter == filter;
+
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      selectedColor: AppColors.nutveSelectionGreen.withOpacity(0.25),
+      checkmarkColor: AppColors.nutveDarkGreen,
+      onSelected: (_) => setState(() => _selectedFilter = filter),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final RecipeService recipeService = RecipeService();
     final homeController = context.watch<HomeController>();
+    final favorites = context.watch<FavoritesController>();
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         color: AppColors.nutveDarkGreen,
-        onRefresh: () async {
-          // Forzar reconstrucción de los FutureBuilder
-          (context as Element).markNeedsBuild();
-        },
+        onRefresh: () async => setState(() {}),
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- 1. BANNER HERO ---
               _buildHeroBanner(),
               const SizedBox(height: 20),
-
-              // --- 2. BOTÓN DE PANEL MAESTRO (SOLO ADMIN) ---
               if (homeController.isAdmin) ...[
                 _buildAdminPanelButton(context),
                 const SizedBox(height: 20),
               ],
-
-              // --- 3. BARRA DE BÚSQUEDA ---
               _buildSearchBar(),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _filterChip('Todas', HomeRecipeFilter.all),
+                  _filterChip('Top Rated', HomeRecipeFilter.topRated),
+                  _filterChip('Quick Bites', HomeRecipeFilter.quickBites),
+                  _filterChip('Favoritas', HomeRecipeFilter.favorites),
+                ],
+              ),
               const SizedBox(height: 25),
-
-              // --- 4. SECCIÓN RECETAS OFICIALES (PRO) ---
               FutureBuilder<List<Recipe>>(
-                future: recipeService.fetchRecipes(),
+                future: _recipeService.fetchRecipes(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
@@ -65,42 +112,53 @@ class HomeScreenContent extends StatelessWidget {
                       ),
                     );
                   }
-                  if (snapshot.hasError)
-                    return const Center(child: Text("Error al cargar recetas"));
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Error al cargar recetas'));
+                  }
 
                   final recipes = snapshot.data ?? [];
-                  if (recipes.isEmpty) return const SizedBox();
+                  if (recipes.isEmpty) {
+                    return const SizedBox();
+                  }
 
-                  final topRated = recipes
-                      .where((r) => r.rating >= 4.5)
-                      .toList();
-                  final quickBites = recipes
-                      .where((r) => r.tagIds.contains(22))
-                      .toList();
+                  final filteredRecipes = _applyFilters(recipes, favorites);
+
+                  if (filteredRecipes.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'Sin resultados para tu busqueda.',
+                          style: TextStyle(fontSize: 16, color: Colors.black54),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final quickBitesFiltered =
+                      filteredRecipes.where((r) => r.tagIds.contains(22)).toList();
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionHeader("Más Populares"),
+                      _buildSectionHeader('Recetas'),
                       const SizedBox(height: 15),
-                      _buildHorizontalList(topRated),
-                      const SizedBox(height: 35),
-                      _buildSectionHeader("Snacks Rápidos y Saludables"),
-                      const SizedBox(height: 10),
-                      _buildVerticalList(quickBites),
+                      _buildHorizontalList(filteredRecipes),
+                      if (quickBitesFiltered.isNotEmpty) ...[
+                        const SizedBox(height: 35),
+                        _buildSectionHeader('Snacks Rápidos y Saludables'),
+                        const SizedBox(height: 10),
+                        _buildVerticalList(quickBitesFiltered),
+                      ],
                     ],
                   );
                 },
               ),
-
               const SizedBox(height: 40),
-
-              // --- 5. SECCIÓN COMUNIDAD ---
               _buildCommunityHeader(context),
               const SizedBox(height: 15),
-
               FutureBuilder<List<UserRecipe>>(
-                future: recipeService.fetchCommunityRecipes(),
+                future: _recipeService.fetchCommunityRecipes(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -110,7 +168,6 @@ class HomeScreenContent extends StatelessWidget {
                   }
 
                   final communityRecipes = snapshot.data!;
-
                   return SizedBox(
                     height: 300,
                     child: ListView.builder(
@@ -120,7 +177,7 @@ class HomeScreenContent extends StatelessWidget {
                       itemBuilder: (context, index) => _buildUserRecipeCard(
                         context,
                         communityRecipes[index],
-                        homeController.isAdmin, // Pasamos el flag de admin
+                        homeController.isAdmin,
                       ),
                     ),
                   );
@@ -134,15 +191,7 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // WIDGETS DE CONSTRUCCIÓN
-  // ==========================================
-
-  Widget _buildUserRecipeCard(
-    BuildContext context,
-    UserRecipe recipe,
-    bool isAdmin,
-  ) {
+  Widget _buildUserRecipeCard(BuildContext context, UserRecipe recipe, bool isAdmin) {
     return Stack(
       children: [
         GestureDetector(
@@ -170,9 +219,7 @@ class HomeScreenContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   child: Image.network(
                     recipe.imageUrl,
                     height: 140,
@@ -192,21 +239,14 @@ class HomeScreenContent extends StatelessWidget {
                     children: [
                       Text(
                         recipe.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.person,
-                            size: 14,
-                            color: AppColors.nutveDarkGreen,
-                          ),
+                          const Icon(Icons.person, size: 14, color: AppColors.nutveDarkGreen),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -225,10 +265,7 @@ class HomeScreenContent extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildSmallTag(
-                            Icons.access_time_filled,
-                            recipe.duration,
-                          ),
+                          _buildSmallTag(Icons.access_time_filled, recipe.duration),
                           _buildSmallTag(
                             Icons.star_rounded,
                             recipe.avgRating.toStringAsFixed(1),
@@ -243,8 +280,6 @@ class HomeScreenContent extends StatelessWidget {
             ),
           ),
         ),
-
-        // --- BOTÓN ELIMINAR (SOLO PARA ADMIN) ---
         if (isAdmin)
           Positioned(
             top: 10,
@@ -258,11 +293,7 @@ class HomeScreenContent extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
                 ),
-                child: const Icon(
-                  Icons.delete_sweep,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: const Icon(Icons.delete_sweep, color: Colors.white, size: 20),
               ),
             ),
           ),
@@ -274,22 +305,23 @@ class HomeScreenContent extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Eliminar Receta"),
+        title: const Text('Eliminar Receta'),
         content: Text("¿Deseas eliminar '${recipe.title}' de la comunidad?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar"),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(ctx);
               await AdminService().deleteRecipe(recipe.id, false);
-              // Forzar refresco visual
-              (context as Element).markNeedsBuild();
+              if (mounted) {
+                setState(() {});
+              }
             },
-            child: const Text("Confirmar Borrado"),
+            child: const Text('Confirmar Borrado'),
           ),
         ],
       ),
@@ -312,7 +344,7 @@ class HomeScreenContent extends StatelessWidget {
         ),
         icon: const Icon(Icons.psychology, color: Colors.amber),
         label: const Text(
-          "CONSOLA MAESTRA (IA & AVISOS)",
+          'CONSOLA MAESTRA (IA & AVISOS)',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         onPressed: () => Navigator.push(
@@ -322,8 +354,6 @@ class HomeScreenContent extends StatelessWidget {
       ),
     );
   }
-
-  // --- RESTO DE WIDGETS (BANNER, BUSCADOR, ETC) ---
 
   Widget _buildHeroBanner() {
     return Container(
@@ -337,7 +367,7 @@ class HomeScreenContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Desbloquea tu \nPotencial",
+            'Desbloquea tu \nPotencial',
             style: TextStyle(
               color: Colors.white,
               fontSize: 26,
@@ -352,7 +382,7 @@ class HomeScreenContent extends StatelessWidget {
             ),
             onPressed: () {},
             child: const Text(
-              "MEJORAR PLAN",
+              'MEJORAR PLAN',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
@@ -373,8 +403,9 @@ class HomeScreenContent extends StatelessWidget {
         ],
       ),
       child: TextField(
+        onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
         decoration: InputDecoration(
-          hintText: "Buscar receta...",
+          hintText: 'Buscar receta...',
           prefixIcon: const Icon(Icons.search, color: AppColors.nutveDarkGreen),
           filled: true,
           fillColor: Colors.white,
@@ -398,7 +429,7 @@ class HomeScreenContent extends StatelessWidget {
         TextButton(
           onPressed: () {},
           child: const Text(
-            "Ver todo",
+            'Ver todo',
             style: TextStyle(color: AppColors.nutveSelectionGreen),
           ),
         ),
@@ -438,11 +469,11 @@ class HomeScreenContent extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Comunidad kooki",
+              'Comunidad kooki',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
-              "Inspírate con otros usuarios",
+              'Inspírate con otros usuarios',
               style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
           ],
@@ -462,11 +493,7 @@ class HomeScreenContent extends StatelessWidget {
     );
   }
 
-  Widget _buildSmallTag(
-    IconData icon,
-    String text, {
-    Color color = Colors.grey,
-  }) {
+  Widget _buildSmallTag(IconData icon, String text, {Color color = Colors.grey}) {
     return Row(
       children: [
         Icon(icon, size: 14, color: color),
@@ -486,7 +513,7 @@ class HomeScreenContent extends StatelessWidget {
   Widget _buildEmptyCommunity() {
     return const Center(
       child: Text(
-        "¡Aún no hay recetas aquí!",
+        '¡Aún no hay recetas aquí!',
         style: TextStyle(color: Colors.grey),
       ),
     );
