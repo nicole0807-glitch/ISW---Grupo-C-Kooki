@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import '../../utils/app_colors.dart';
+import '../../controllers/home_controller.dart';
 import '../../controllers/pantry_controller.dart';
 import '../../services/notification_service.dart';
 import 'home_screen_content.dart';
