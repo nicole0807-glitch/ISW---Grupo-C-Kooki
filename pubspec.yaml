@@ -29,6 +29,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo.png
+    # - assets/logo.png
     - assets/imagen_main.png
     - assets/imagen_boton_home.png
