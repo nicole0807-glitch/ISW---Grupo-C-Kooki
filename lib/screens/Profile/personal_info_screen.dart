@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/home_controller.dart';
 import '../../services/profile_service.dart';
 
 class PersonalInfoScreen extends StatefulWidget {
@@ -11,11 +13,18 @@ class PersonalInfoScreen extends StatefulWidget {
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   final _profileService = ProfileService();
   late Future<Map<String, dynamic>?> _userDataFuture;
+  List<Map<String, dynamic>> _roles = [];
+  int? _selectedRoleId;
+  bool _rolesLoading = false;
+  bool _savingRole = false;
 
   @override
   void initState() {
     super.initState();
     _refreshData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRolesIfAdmin();
+    });
   }
 
   //Recarga los datos cuando son actualizados
@@ -25,9 +34,53 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     });
   }
 
+  Future<void> _loadRolesIfAdmin() async {
+    final isAdmin = context.read<HomeController>().isAdmin;
+    if (!isAdmin) return;
+
+    setState(() => _rolesLoading = true);
+    final roles = await _profileService.getAvailableRoles();
+    if (!mounted) return;
+    setState(() {
+      _roles = roles;
+      _rolesLoading = false;
+    });
+  }
+
+  Future<void> _saveRoleForCurrentUser() async {
+    final user = _profileService.currentUser;
+    final roleId = _selectedRoleId;
+    if (user == null || roleId == null) return;
+
+    setState(() => _savingRole = true);
+    final error = await _profileService.updateUserRole(
+      userId: user.id,
+      roleId: roleId,
+    );
+    if (!mounted) return;
+
+    setState(() => _savingRole = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error == null
+              ? "Rol actualizado correctamente."
+              : "No se pudo actualizar el rol: $error",
+        ),
+      ),
+    );
+
+    if (error == null) {
+      await context.read<HomeController>().loadUserRole();
+      _refreshData();
+    }
+  }
+
   //Widget principal
   @override
   Widget build(BuildContext context) {
+    final isAdmin = context.watch<HomeController>().isAdmin;
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 246, 248, 246),
       appBar: AppBar(
@@ -75,6 +128,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
           //Datos cargados
           final data = snapshot.data;
+          _selectedRoleId ??= data?['role_id'] as int?;
 
           //Se verifica que data no sea null
           final userName = (data != null && data['username'] != null) 
@@ -96,6 +150,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
                 //Tarjeta de email y contraseña
                 _buildSensitiveSection(email),
+                if (isAdmin) ...[
+                  const SizedBox(height: 20),
+                  _buildRoleSection(),
+                ],
               ],
             ),
           );
@@ -103,6 +161,72 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         }
       )
 
+    );
+  }
+
+  Widget _buildRoleSection() {
+    final dropdownValue = _roles
+            .where((r) => r['role_id'] == _selectedRoleId)
+            .isNotEmpty
+        ? _selectedRoleId
+        : null;
+
+    return Card(
+      elevation: 2,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Gestión de Rol (Admin)",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            if (_rolesLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              DropdownButtonFormField<int>(
+                value: dropdownValue,
+                decoration: const InputDecoration(
+                  labelText: "Seleccionar rol",
+                  border: OutlineInputBorder(),
+                ),
+                items: _roles
+                    .map(
+                      (role) => DropdownMenuItem<int>(
+                        value: role['role_id'] as int,
+                        child: Text(role['name']?.toString() ?? 'Rol'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => _selectedRoleId = value),
+              ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (_savingRole || _selectedRoleId == null)
+                    ? null
+                    : _saveRoleForCurrentUser,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 19, 236, 91),
+                  foregroundColor: Colors.black,
+                ),
+                child: _savingRole
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Guardar rol"),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

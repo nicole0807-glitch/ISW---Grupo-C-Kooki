@@ -35,6 +35,32 @@ class ProfileService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getAvailableRoles() async {
+    try {
+      final res = await _supabase
+          .from('Role')
+          .select('role_id, name')
+          .order('role_id', ascending: true);
+      return (res as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<String?> updateUserRole({
+    required String userId,
+    required int roleId,
+  }) async {
+    try {
+      await _supabase
+          .from('Profile')
+          .update({'role_id': roleId}).eq('user_id', userId);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   //Se actualiza el Mail de autenticación
   Future<String?> updateAuthMail(String? newEmail) async {
     try {
