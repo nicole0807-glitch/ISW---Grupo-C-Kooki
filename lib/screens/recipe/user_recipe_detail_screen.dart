@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../controllers/home_controller.dart';
 import '../../models/user_recipe_model.dart';
 import '../../utils/app_colors.dart';
 
@@ -16,6 +18,22 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
   final SupabaseClient supabase = Supabase.instance.client;
   final TextEditingController _commentController = TextEditingController();
   bool _isSending = false;
+  final Set<dynamic> _autoModeratedIds = <dynamic>{};
+
+  // Algoritmo básico con palabras ofensivas pre-cargadas.
+  static const List<String> _offensiveWords = [
+    'idiota',
+    'estupido',
+    'estúpido',
+    'imbecil',
+    'imbécil',
+    'pendejo',
+    'mierda',
+    'carajo',
+    'fuck',
+    'shit',
+    'bitch',
+  ];
 
   // --- 1. FUNCIÓN PARA GUARDAR CALIFICACIÓN (STARS) ---
   Future<void> _rateRecipe(int ratingValue) async {
@@ -124,6 +142,72 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  bool _containsOffensiveLanguage(String text) {
+    final normalized = text.toLowerCase();
+    return _offensiveWords.any((word) => normalized.contains(word));
+  }
+
+  Future<void> _deleteComment(dynamic commentId, {bool silent = false}) async {
+    try {
+      await supabase.from('recipe_comments').delete().eq('id', commentId);
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Comentario eliminado.')),
+        );
+      }
+    } catch (e) {
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo eliminar: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmAndDeleteComment(dynamic commentId) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar comentario'),
+        content: const Text(
+          '¿Confirmas eliminar este comentario de forma definitiva?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete == true) {
+      await _deleteComment(commentId);
+    }
+  }
+
+  Future<void> _autoModerateComments(List<Map<String, dynamic>> comments) async {
+    for (final comment in comments) {
+      final commentId = comment['id'];
+      final text = (comment['comment'] ?? '').toString();
+      if (commentId == null || _autoModeratedIds.contains(commentId)) {
+        continue;
+      }
+      if (_containsOffensiveLanguage(text)) {
+        _autoModeratedIds.add(commentId);
+        await _deleteComment(commentId, silent: true);
+      }
     }
   }
 
@@ -346,6 +430,8 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
   }
 
   Widget _buildCommentsSection() {
+    final isAdmin = context.watch<HomeController>().isAdmin;
+
     return Column(
       children: [
         Expanded(
@@ -359,6 +445,14 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
               if (!snapshot.hasData)
                 return const Center(child: CircularProgressIndicator());
               final comments = snapshot.data!;
+
+              // Moderación automática para admins con algoritmo local de palabras ofensivas.
+              if (isAdmin) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _autoModerateComments(comments);
+                });
+              }
+
               return ListView.builder(
                 padding: const EdgeInsets.all(20),
                 itemCount: comments.length,
@@ -375,6 +469,13 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(c['comment'] ?? ''),
+                    trailing: isAdmin
+                        ? IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.redAccent),
+                            tooltip: 'Eliminar comentario',
+                            onPressed: () => _confirmAndDeleteComment(c['id']),
+                          )
+                        : null,
                   );
                 },
               );

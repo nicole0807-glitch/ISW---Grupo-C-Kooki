@@ -105,9 +105,28 @@ class _PublishRecipeScreenState extends State<PublishRecipeScreen> {
 
   // --- LÓGICA DE PUBLICACIÓN ACTUALIZADA CON USERNAME ---
   Future<void> _handlePublish() async {
+    final hasAtLeastOneIngredient = _ingredientRows.any(
+      (row) => row['name']!.text.trim().isNotEmpty,
+    );
+    final instructions = _instructionController.text.trim();
+
     if (_titleController.text.trim().isEmpty || _selectedImageBytes == null) {
       _showAssistantAviso(
         "¡Hola! Necesito un título y una foto.",
+        isError: true,
+      );
+      return;
+    }
+    if (!hasAtLeastOneIngredient) {
+      _showAssistantAviso(
+        "Agrega al menos un ingrediente para publicar.",
+        isError: true,
+      );
+      return;
+    }
+    if (instructions.isEmpty) {
+      _showAssistantAviso(
+        "Escribe al menos un paso de preparación.",
         isError: true,
       );
       return;
@@ -151,9 +170,9 @@ class _PublishRecipeScreenState extends State<PublishRecipeScreen> {
             : _durationController.text,
         cost: _cost,
         difficulty: _difficulty,
-        instructions: _instructionController.text.trim(),
+        instructions: instructions,
         ingredients: ingredientsList,
-        steps: [_instructionController.text.trim()],
+        steps: [instructions],
         nutrition: {},
       );
 
@@ -163,7 +182,9 @@ class _PublishRecipeScreenState extends State<PublishRecipeScreen> {
       _showAssistantAviso("¡Genial! Tu receta ya está disponible.");
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      _showAssistantAviso("Error: $e", isError: true);
+      final raw = e.toString();
+      final cleaned = raw.replaceFirst('Exception: ', '');
+      _showAssistantAviso("Error: $cleaned", isError: true);
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }

@@ -8,6 +8,16 @@ import '../models/user_recipe_model.dart';
 class RecipeService {
   final _supabase = Supabase.instance.client;
 
+  String _buildPostgrestError(PostgrestException e) {
+    final parts = <String>[
+      e.message,
+      if (e.details != null && e.details!.isNotEmpty) e.details!,
+      if (e.hint != null && e.hint!.isNotEmpty) e.hint!,
+      if (e.code.isNotEmpty) 'code: ${e.code}',
+    ];
+    return parts.join(' | ');
+  }
+
   // ==========================================
   // 1. RECETAS DE LA COMUNIDAD (user_recipes)
   // ==========================================
@@ -45,28 +55,49 @@ class RecipeService {
   }
 
   Future<void> saveRecipe(UserRecipe recipe) async {
-    try {
-      final user = _supabase.auth.currentUser;
+    final recipeData = <String, dynamic>{
+      'user_id': recipe.userId,
+      'user_name': recipe.userName,
+      'title': recipe.title,
+      'image_url': recipe.imageUrl,
+      'duration': recipe.duration,
+      'cost': recipe.cost,
+      'difficulty': recipe.difficulty,
+      'instructions': recipe.instructions,
+      'ingredients': recipe.ingredients,
+      'steps': recipe.steps,
+      'nutrition': recipe.nutrition,
+      'preference': '',
+      'avg_rating': 0.0,
+    };
 
-      final recipeData = {
-        'user_id': user?.id,
-        'user_name': user?.userMetadata?['full_name'] ?? 'Usuario Kooki',
-        'title': recipe.title,
-        'image_url': recipe.imageUrl,
-        'duration': recipe.duration,
-        'cost': recipe.cost,
-        'difficulty': recipe.difficulty,
-        'ingredients': recipe.ingredients,
-        'steps': recipe.steps,
-        'preference': '',
-        'avg_rating': 0.0,
-      };
+    final payload = Map<String, dynamic>.from(recipeData);
+    const missingColumnRegex = r'column "([^"]+)" of relation "user_recipes" does not exist';
 
-      await _supabase.from('user_recipes').insert(recipeData);
-    } catch (e) {
-      print('Error saving recipe: $e');
-      throw Exception('No se pudo guardar la receta');
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        await _supabase.from('user_recipes').insert(payload);
+        return;
+      } on PostgrestException catch (e) {
+        final message = e.message.toLowerCase();
+        final match = RegExp(missingColumnRegex).firstMatch(message);
+        final missingColumn = match?.group(1);
+
+        if (missingColumn != null && payload.containsKey(missingColumn)) {
+          payload.remove(missingColumn);
+          continue;
+        }
+
+        final pgError = _buildPostgrestError(e);
+        print('Error saving recipe (postgrest): $pgError');
+        throw Exception('No se pudo guardar la receta: $pgError');
+      } catch (e) {
+        print('Error saving recipe: $e');
+        throw Exception('No se pudo guardar la receta: $e');
+      }
     }
+
+    throw Exception('No se pudo guardar la receta: esquema incompatible de user_recipes');
   }
 
   Future<void> addCommunityRating(String recipeId, int score) async {
