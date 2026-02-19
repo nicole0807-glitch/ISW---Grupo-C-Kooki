@@ -1,6 +1,9 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -225,6 +228,100 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     );
   }
 
+  bool get _hasWeeklyPlan =>
+      _weeklyPlan.isNotEmpty &&
+      _weeklyPlan.values.any((meals) => meals.values.any((recipe) => recipe != null));
+
+  Future<void> _exportWeeklyPlanPdf() async {
+    final premium = context.read<PremiumController>();
+    if (!premium.isPremium) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Necesitas membresía premium activa para exportar el plan.'),
+        ),
+      );
+      return;
+    }
+
+    if (!_hasWeeklyPlan) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Primero debes generar un plan semanal para exportarlo.'),
+        ),
+      );
+      return;
+    }
+
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.MultiPage(
+        build: (context) {
+          return [
+            pw.Text(
+              'Plan nutricional semanal',
+              style: pw.TextStyle(
+                fontSize: 22,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text('Objetivo diario: $_targetCalories kcal'),
+            pw.SizedBox(height: 16),
+            ..._weekDays.map((day) {
+              final meals = _weeklyPlan[day] ?? {};
+              return pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 12),
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 0.6),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      '${_weekdayLabel(day.weekday)} ${day.day}/${day.month}/${day.year}',
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    pw.SizedBox(height: 6),
+                    ..._MealSlot.values.map((slot) {
+                      final recipe = meals[slot];
+                      final label = _slotLabel(slot);
+                      final recipeText = recipe == null
+                          ? 'Sin asignar'
+                          : '${recipe.title} (${_extractCalories(recipe).round()} kcal)';
+                      return pw.Padding(
+                        padding: const pw.EdgeInsets.only(bottom: 3),
+                        child: pw.Text('• $label: $recipeText'),
+                      );
+                    }),
+                  ],
+                ),
+              );
+            }),
+          ];
+        },
+      ),
+    );
+
+    final bytes = await pdf.save();
+    await _saveAndSharePdf(bytes);
+  }
+
+  Future<void> _saveAndSharePdf(Uint8List bytes) async {
+    final now = DateTime.now();
+    final filename =
+        'plan_semanal_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.pdf';
+
+    await Printing.sharePdf(bytes: bytes, filename: filename);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PDF generado correctamente.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final premium = context.watch<PremiumController>();
@@ -396,6 +493,15 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _exportWeeklyPlanPdf,
+              icon: const Icon(Icons.download),
+              label: const Text('Descargar recetas de la semana (PDF)'),
+            ),
           ),
         ],
       ),
