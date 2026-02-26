@@ -10,10 +10,10 @@ import '../../models/user_recipe_model.dart';
 import '../../services/admin_service.dart';
 import '../../services/recipe_service.dart';
 import '../../utils/app_colors.dart';
-import '../admin/admin_control_panel_screen.dart';
 import '../recipe/validation_queue_screen.dart';
 import '../recipe/publish_recipe_screen.dart';
 import '../recipe/user_recipe_detail_screen.dart';
+import '../admin/admin_dashboard_screen.dart';
 
 enum HomeRecipeFilter { all, topRated, quickBites, favorites }
 
@@ -370,12 +370,12 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
         ),
         icon: const Icon(Icons.psychology, color: Colors.amber),
         label: const Text(
-          'CONSOLA MAESTRA (IA & AVISOS)',
+          'Panel de Administrador',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const AdminControlPanelScreen()),
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
         ),
       ),
     );

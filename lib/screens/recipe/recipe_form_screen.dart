@@ -22,13 +22,16 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   late TextEditingController _imgUrlCtrl;
   String? _difficulty;
 
-  // Variables para la imagen (Compatibilidad total)
+  // Variables para la imagen
   Uint8List? _selectedImageBytes;
   String? _selectedFileName;
+  
+  // Novedad: Interruptor para saber qué método usar
+  bool _isUrlMode = false; 
 
   final List<String> _difficultyOptions = ["Fácil", "Media", "Difícil"];
   List<RecipeIngredient> _ingredients = [];
-  List<String> _steps = [];
+  List<String> _steps =[];
 
   @override
   void initState() {
@@ -38,6 +41,11 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     _descCtrl = TextEditingController(text: r?.description ?? '');
     _timeCtrl = TextEditingController(text: r?.cookingTime ?? '');
     _imgUrlCtrl = TextEditingController(text: r?.imageUrl ?? '');
+    
+    // Si la receta ya tiene un URL al editar, abrimos en modo URL
+    if (r?.imageUrl != null && r!.imageUrl!.isNotEmpty) {
+      _isUrlMode = true;
+    }
     
     if (r?.difficulty != null && _difficultyOptions.contains(r!.difficulty)) {
       _difficulty = r.difficulty;
@@ -73,7 +81,6 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
       setState(() {
         _selectedImageBytes = bytes;
         _selectedFileName = image.name;
-        _imgUrlCtrl.clear(); // Limpiamos la URL manual si se sube un archivo
       });
     }
   }
@@ -81,10 +88,19 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     
-    // Validación de imagen
-    if (_selectedImageBytes == null && _imgUrlCtrl.text.isEmpty) {
+    // Novedad: Limpiar la opción no seleccionada para no enviar datos contradictorios
+    if (_isUrlMode) {
+      _selectedImageBytes = null;
+      _selectedFileName = null;
+    } else {
+      _imgUrlCtrl.clear();
+    }
+
+    // Validación de imagen actualizada
+    if ((!_isUrlMode && _selectedImageBytes == null) || 
+        (_isUrlMode && _imgUrlCtrl.text.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Agrega una imagen de galería o una URL válida")),
+        const SnackBar(content: Text("Debes agregar una imagen (Sube un archivo o pega una URL)")),
       );
       return;
     }
@@ -100,13 +116,13 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
       id: widget.recipe?.id ?? 0,
       title: _titleCtrl.text,
       description: _descCtrl.text,
-      imageUrl: _imgUrlCtrl.text, // El controller decidirá si usar esta o la subida
+      imageUrl: _imgUrlCtrl.text, 
       cookingTime: _timeCtrl.text,
       difficulty: _difficulty,
       nutrition: widget.recipe?.nutrition ?? {},
       ingredients: _ingredients,
       steps: _steps,
-      tagIds: widget.recipe?.tagIds ?? [], 
+      tagIds: widget.recipe?.tagIds ??[], 
       rating: widget.recipe?.rating ?? 0.0,
       status: widget.recipe?.status ?? 'pendiente',
     );
@@ -131,12 +147,12 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     showDialog(context: context, builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text("Añadir Ingrediente"),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
+      content: Column(mainAxisSize: MainAxisSize.min, children:[
         TextField(decoration: const InputDecoration(labelText: "Nombre"), onChanged: (v) => name = v),
         TextField(decoration: const InputDecoration(labelText: "Cantidad"), keyboardType: TextInputType.number, onChanged: (v) => amount = v),
         TextField(decoration: const InputDecoration(labelText: "Unidad (ej: g, ml, pza)"), onChanged: (v) => unit = v),
       ]),
-      actions: [
+      actions:[
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
         ElevatedButton(onPressed: () {
           if (name.isNotEmpty && amount.isNotEmpty) {
@@ -157,6 +173,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<RecipeAdminController>();
+    final accentGreen = const Color(0xFF13EC5B);
 
     return Scaffold(
       appBar: AppBar(
@@ -167,52 +184,124 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
             
             // --- SECCIÓN DE IMAGEN ---
             Text("Imagen de la Receta", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[800])),
             const SizedBox(height: 12),
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: Container(
+            
+            // 1. SELECTOR DE MODO (Archivo vs URL)
+            Row(
+              children:[
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isUrlMode = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: !_isUrlMode ? accentGreen.withOpacity(0.2) : Colors.transparent,
+                        border: Border.all(color: !_isUrlMode ? accentGreen : Colors.grey.shade300),
+                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                      ),
+                      child: Center(
+                        child: Text("Subir Archivo", style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: !_isUrlMode ? Colors.green[800] : Colors.grey,
+                        )),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isUrlMode = true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _isUrlMode ? accentGreen.withOpacity(0.2) : Colors.transparent,
+                        border: Border.all(color: _isUrlMode ? accentGreen : Colors.grey.shade300),
+                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+                      ),
+                      child: Center(
+                        child: Text("Usar URL", style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _isUrlMode ? Colors.green[800] : Colors.grey,
+                        )),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // 2. CONTENIDO CONDICIONAL (Muestra uno u otro)
+            if (!_isUrlMode) ...[
+              // MODO SUBIR ARCHIVO
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: _selectedImageBytes != null 
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.memory(_selectedImageBytes!, fit: BoxFit.cover, width: double.infinity),
+                        )
+                      : Column(mainAxisAlignment: MainAxisAlignment.center, children: const[
+                          Icon(Icons.cloud_upload_outlined, size: 48, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text("Toca para subir desde galería", style: TextStyle(color: Colors.grey))
+                        ]),
+                  ),
+                ),
+              ),
+            ] else ...[
+              // MODO URL
+              TextFormField(
+                controller: _imgUrlCtrl, 
+                decoration: InputDecoration(
+                  labelText: "Pega el URL de la imagen", 
+                  hintText: "https://ejemplo.com/imagen.jpg",
+                  prefixIcon: const Icon(Icons.link),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+                ), 
+                onChanged: (v) => setState(() {}), // Dispara el render de la vista previa
+              ),
+              const SizedBox(height: 12),
+              if (_imgUrlCtrl.text.isNotEmpty)
+                Container(
                   width: double.infinity,
-                  height: 220,
+                  height: 200,
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade300),
-                    image: _selectedImageBytes != null 
-                      ? DecorationImage(image: MemoryImage(_selectedImageBytes!), fit: BoxFit.cover)
-                      : (_imgUrlCtrl.text.isNotEmpty 
-                          ? DecorationImage(
-                              image: NetworkImage(_imgUrlCtrl.text), 
-                              fit: BoxFit.cover,
-                              onError: (_, __) => const Icon(Icons.broken_image),
-                            )
-                          : null)
                   ),
-                  child: (_selectedImageBytes == null && _imgUrlCtrl.text.isEmpty)
-                      ? Column(mainAxisAlignment: MainAxisAlignment.center, children: const [
-                          Icon(Icons.cloud_upload_outlined, size: 48, color: Colors.grey),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      _imgUrlCtrl.text,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      errorBuilder: (context, error, stackTrace) => Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const[
+                          Icon(Icons.broken_image, size: 48, color: Colors.grey),
                           SizedBox(height: 8),
-                          Text("Toca para subir desde galería", style: TextStyle(color: Colors.grey))
-                        ])
-                      : null,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _imgUrlCtrl, 
-              decoration: InputDecoration(
-                labelText: "O pega un URL de imagen directo", 
-                hintText: "https://ejemplo.com/imagen.jpg",
-                prefixIcon: const Icon(Icons.link),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
-              ), 
-              onChanged: (v) => setState(() { _selectedImageBytes = null; }), 
-            ),
+                          Text("URL inválido o imagen no encontrada", style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+            ],
 
             const SizedBox(height: 24),
             TextFormField(
@@ -227,7 +316,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
               maxLines: 2
             ),
             const SizedBox(height: 16),
-            Row(children: [
+            Row(children:[
               Expanded(child: TextFormField(
                 controller: _timeCtrl, 
                 keyboardType: TextInputType.number,
@@ -261,7 +350,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
               showDialog(context: context, builder: (ctx) => AlertDialog(
                 title: const Text("Nuevo Paso"),
                 content: TextField(onChanged: (v) => step = v, decoration: const InputDecoration(hintText: "Escribe la instrucción...")),
-                actions: [
+                actions:[
                   TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
                   ElevatedButton(onPressed: () { 
                     if(step.isNotEmpty) setState(() => _steps.add(step)); 
@@ -280,11 +369,11 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
                   _steps.insert(newIdx, item);
                 });
               },
-              children: [
+              children:[
                 for (int i = 0; i < _steps.length; i++)
                   ListTile(
                     key: ValueKey("step_$i"),
-                    leading: CircleAvatar(backgroundColor: const Color(0xFF13EC5B), radius: 12, child: Text("${i + 1}", style: const TextStyle(fontSize: 10, color: Colors.black, fontWeight: FontWeight.bold))),
+                    leading: CircleAvatar(backgroundColor: accentGreen, radius: 12, child: Text("${i + 1}", style: const TextStyle(fontSize: 10, color: Colors.black, fontWeight: FontWeight.bold))),
                     title: Text(_steps[i]),
                     trailing: const Icon(Icons.drag_handle, color: Colors.grey),
                   )
@@ -297,7 +386,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
               height: 56,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF13EC5B),
+                  backgroundColor: accentGreen,
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
@@ -315,7 +404,7 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   }
 
   Widget _sectionHeader(String title, VoidCallback onAdd) {
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[
       Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       IconButton(onPressed: onAdd, icon: const Icon(Icons.add_circle, color: Color(0xFF13EC5B), size: 28)),
     ]);

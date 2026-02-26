@@ -10,10 +10,7 @@ class RecipeService {
 
   String _buildPostgrestError(PostgrestException e) {
     final parts = <String>[
-      e.message,
-      if (e.details != null && e.details!.isNotEmpty) e.details!,
-      if (e.hint != null && e.hint!.isNotEmpty) e.hint!,
-      if (e.code.isNotEmpty) 'code: ${e.code}',
+      e.message
     ];
     return parts.join(' | ');
   }
