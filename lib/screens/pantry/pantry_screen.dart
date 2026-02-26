@@ -85,7 +85,7 @@ class _PantryScreenState extends State<PantryScreen> {
               builder: (controller) => Row(
                 children: [
                   Text(
-                    'Mostrando ${controller.filteredIngredients.length} de ${controller.totalItems} elementos',
+                    'Mostrando ${controller.filteredIngredients.length} de ${controller.totalItems} ingredientes',
                     style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 14,

@@ -25,9 +25,9 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   final IngredientMasterRepository _masterRepo = IngredientMasterRepository();
 
   IngredientMaster? _selectedIngredient;
-  List<IngredientMaster> _allIngredients = [];   // Lista completa siempre cargada
-  List<IngredientMaster> _searchResults = [];    // Lista filtrada por búsqueda
-  bool _showDropdown = false;                    // Controla visibilidad del dropdown
+  List<IngredientMaster> _allIngredients = []; // Lista completa siempre cargada
+  List<IngredientMaster> _searchResults = []; // Lista filtrada por búsqueda
+  bool _showDropdown = false; // Controla visibilidad del dropdown
   String _selectedCategory = 'Produce';
   String _selectedUnit = 'g';
   DateTime? _expirationDate;
@@ -129,8 +129,11 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   }
 
   Future<void> _saveIngredient() async {
+    final isEditing = widget.ingredient != null;
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedIngredient == null) {
+
+    // En modo crear, validamos que haya seleccionado un ingrediente de la lista maestra
+    if (!isEditing && _selectedIngredient == null) {
       Get.snackbar('Error', 'Selecciona un ingrediente de la lista');
       return;
     }
@@ -143,34 +146,36 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
 
       if (userId == null) {
         Get.snackbar('Error', 'Usuario no autenticado');
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
       final quantityValue = double.parse(_quantityController.text.trim());
 
-      final ingredient = Ingredient(
+      final ingredientToSave = Ingredient(
         pantryId: widget.ingredient?.pantryId,
-        ingredientMasterId: _selectedIngredient!.ingredientId,
+        ingredientMasterId: isEditing
+            ? widget.ingredient!.ingredientMasterId
+            : _selectedIngredient!.ingredientId,
         userId: userId,
-        name: _selectedIngredient!.name,
+        name: isEditing ? widget.ingredient!.name : _selectedIngredient!.name,
         category: _selectedCategory,
         quantity: quantityValue,
         unit: _selectedUnit,
         expirationDate: _expirationDate,
         imageUrl: null,
-        createdAt: DateTime.now(),
-        status: 'Fresh',
+        createdAt: widget.ingredient?.createdAt ?? DateTime.now(),
+        status: widget.ingredient?.status ?? 'Fresco',
       );
 
       bool success;
-      if (widget.ingredient == null) {
+      if (!isEditing) {
         print('🆕 Agregando nuevo ingrediente...');
-        success = await controller.addIngredient(ingredient);
+        success = await controller.addIngredient(ingredientToSave);
         print('🔵 addIngredient retornó: $success');
       } else {
         print('✏️ Actualizando ingrediente...');
-        success = await controller.updateIngredient(ingredient);
+        success = await controller.updateIngredient(ingredientToSave);
         print('🔵 updateIngredient retornó: $success');
       }
 
@@ -180,10 +185,10 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
         print('✅ Cerrando pantalla...');
         // Esperar para que se vea el snackbar antes de cerrar
         await Future.delayed(const Duration(milliseconds: 900));
-        
+
         // Intentar con Navigator en lugar de GetX
         Navigator.of(context).pop();
-        
+
         print('✅ Pantalla cerrada');
       } else {
         print('❌ NO se cierra - success: $success, mounted: $mounted');
@@ -223,7 +228,10 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
           actions: [
             TextButton(
               onPressed: () => Get.back(),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           ],
         ),
@@ -243,106 +251,140 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Campo de búsqueda con dropdown integrado
-              Column(
-                children: [
-                  Focus(
-                    onFocusChange: (hasFocus) {
-                      if (hasFocus) _onSearchFocus();
-                    },
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _onSearchChanged,
-                      onTap: _onSearchFocus,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar o seleccionar ingrediente...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  setState(() {
-                                    _searchController.clear();
-                                    _selectedIngredient = null;
-                                    _searchResults = _allIngredients;
-                                    _showDropdown = true;
-                                  });
-                                },
-                              )
-                            : const Icon(Icons.arrow_drop_down),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+              // Campo de búsqueda con dropdown integrado o Vista de sólo lectura
+              if (isEditing)
+                // Modo Editar: Vista de sólo lectura con candado
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock, size: 20, color: Colors.grey),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.ingredient!.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Column(
+                  children: [
+                    Focus(
+                      onFocusChange: (hasFocus) {
+                        if (hasFocus) _onSearchFocus();
+                      },
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        onTap: _onSearchFocus,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar o seleccionar ingrediente...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                      _selectedIngredient = null;
+                                      _searchResults = _allIngredients;
+                                      _showDropdown = true;
+                                    });
+                                  },
+                                )
+                              : const Icon(Icons.arrow_drop_down),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // Dropdown lista de ingredientes
-                  if (_showDropdown && _searchResults.isNotEmpty)
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 220),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _searchResults.length,
-                        itemBuilder: (context, index) {
-                          final item = _searchResults[index];
-                          final isSelected =
-                              _selectedIngredient?.ingredientId == item.ingredientId;
-                          return ListTile(
-                            dense: true,
-                            title: Text(
-                              item.name,
-                              style: TextStyle(
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? const Color(0xFF4CAF50)
-                                    : Colors.black87,
-                              ),
+                    // Dropdown lista de ingredientes
+                    if (_showDropdown && _searchResults.isNotEmpty)
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 220),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
                             ),
-                            trailing: isSelected
-                                ? const Icon(Icons.check,
-                                    color: Color(0xFF4CAF50), size: 18)
-                                : null,
-                            onTap: () => _selectIngredient(item),
-                          );
-                        },
+                          ],
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _searchResults.length,
+                          itemBuilder: (context, index) {
+                            final item = _searchResults[index];
+                            final isSelected =
+                                _selectedIngredient?.ingredientId ==
+                                item.ingredientId;
+                            return ListTile(
+                              dense: true,
+                              title: Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? const Color(0xFF4CAF50)
+                                      : Colors.black87,
+                                ),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: Color(0xFF4CAF50),
+                                      size: 18,
+                                    )
+                                  : null,
+                              onTap: () => _selectIngredient(item),
+                            );
+                          },
+                        ),
                       ),
-                    ),
 
-                  // Mensaje si no hay resultados
-                  if (_showDropdown && _searchResults.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
+                    // Mensaje si no hay resultados
+                    if (_showDropdown && _searchResults.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'No se encontraron ingredientes',
+                          style: TextStyle(color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                      child: const Text(
-                        'No se encontraron ingredientes',
-                        style: TextStyle(color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                  ],
+                ),
+              if (!isEditing) const SizedBox(height: 12),
 
-              // Ingrediente seleccionado
-              if (_selectedIngredient != null)
+              // Ingrediente seleccionado (solo en modo crear)
+              if (!isEditing && _selectedIngredient != null)
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -409,10 +451,12 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                         ),
                       ),
                       items: _units
-                          .map((unit) => DropdownMenuItem(
-                                value: unit,
-                                child: Text(unit),
-                              ))
+                          .map(
+                            (unit) => DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
+                            ),
+                          )
                           .toList(),
                       onChanged: (value) =>
                           setState(() => _selectedUnit = value!),
@@ -481,15 +525,20 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                 onTap: _selectExpirationDate,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.calendar_today,
-                          color: Colors.grey[600], size: 20),
+                      Icon(
+                        Icons.calendar_today,
+                        color: Colors.grey[600],
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
                       Text(
                         _expirationDate != null
@@ -504,8 +553,11 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                       const Spacer(),
                       if (_expirationDate != null)
                         IconButton(
-                          icon: const Icon(Icons.clear,
-                              size: 18, color: Colors.grey),
+                          icon: const Icon(
+                            Icons.clear,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
                           onPressed: () =>
                               setState(() => _expirationDate = null),
                         ),
@@ -532,7 +584,9 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -540,7 +594,9 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                             const Icon(Icons.add, size: 20),
                             const SizedBox(width: 8),
                             Text(
-                              isEditing ? 'Actualizar ingrediente' : 'Agregar a la despensa',
+                              isEditing
+                                  ? 'Actualizar ingrediente'
+                                  : 'Agregar a la despensa',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

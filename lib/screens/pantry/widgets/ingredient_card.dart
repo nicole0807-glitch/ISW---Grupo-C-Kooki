@@ -80,23 +80,10 @@ class IngredientCard extends StatelessWidget {
                      ingredient.id ?? 
                      ingredient.ingredientMasterId.toString();
 
-    print('🗑️ Intentando eliminar con ID: $deleteId');
-
-  // if (pantryId == null) {
-  //   Get.snackbar(
-  //     'Error',
-  //     'No se puede eliminar este ingrediente (ID no válido)',
-  //     backgroundColor: Colors.red,
-  //     colorText: Colors.white,
-  //     snackPosition: SnackPosition.BOTTOM,
-  //   );
-  //   return;
-  // }
-
 Get.dialog(
       AlertDialog(
-        title: const Text('Delete Ingredient'),
-        content: Text('Are you sure you want to delete ${ingredient.name}?'),
+        title: const Text('Eliminar Ingrediente'),
+        content: Text('¿Estás seguro de que quieres eliminar ${ingredient.name}?'),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
