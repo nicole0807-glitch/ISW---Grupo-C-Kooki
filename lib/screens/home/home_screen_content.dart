@@ -116,8 +116,8 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                 runSpacing: 8,
                 children: [
                   _filterChip('Todas', HomeRecipeFilter.all),
-                  _filterChip('Top Rated', HomeRecipeFilter.topRated),
-                  _filterChip('Quick Bites', HomeRecipeFilter.quickBites),
+                  _filterChip('Más valoradas', HomeRecipeFilter.topRated),
+                  _filterChip('Snacks rápidos', HomeRecipeFilter.quickBites),
                   _filterChip('Favoritas', HomeRecipeFilter.favorites),
                 ],
               ),
@@ -151,7 +151,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       padding: EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: Text(
-                          'Sin resultados para tu busqueda.',
+                          'Sin resultados para tu búsqueda.',
                           style: TextStyle(fontSize: 16, color: Colors.black54),
                         ),
                       ),

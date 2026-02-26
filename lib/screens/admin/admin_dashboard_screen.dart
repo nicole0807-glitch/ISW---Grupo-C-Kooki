@@ -186,7 +186,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(height: 40),
                       
                       Text(
-                        "Management Hub", 
+                        "Centro de gestión", 
                         style: GoogleFonts.poppins(color: textWhite, fontSize: 20, fontWeight: FontWeight.bold)
                       ),
                       const SizedBox(height: 20),
@@ -224,8 +224,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children:[
-            Text("System Admin", style: GoogleFonts.poppins(color: textGrey, fontSize: 12)),
-            Text("Kooki Dashboard", style: GoogleFonts.poppins(color: textWhite, fontSize: 18, fontWeight: FontWeight.w600)),
+            Text("Administrador del sistema", style: GoogleFonts.poppins(color: textGrey, fontSize: 12)),
+
+            Text("Panel de Kooki", style: GoogleFonts.poppins(color: textWhite, fontSize: 18, fontWeight: FontWeight.w600)),
+
           ],
         ),
         const Spacer(),
@@ -253,8 +255,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         // --- BOTONES ORIGINALES DEL DASHBOARD ---
 
         _buildMenuButton(
-          "User Management", 
-          "Roles & Permissions", 
+          "Gestión de usuarios", 
+          "Roles y permisos", 
           Icons.manage_accounts, 
           Colors.blue,
           () {}, 
@@ -262,8 +264,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const SizedBox(height: 16),
 
         _buildMenuButton(
-          "Recipe CRUD", 
-          "Create, Edit & Delete", 
+          "CRUD de recetas", 
+          "Crear, editar y eliminar", 
           Icons.book, 
           lightGreen,
           () {
@@ -276,8 +278,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const SizedBox(height: 16),
 
         _buildMenuButton(
-          "Moderation", 
-          "Flagged content & Reports", 
+          "Moderación", 
+          "Contenido reportado y denuncias", 
           Icons.gavel, 
           Colors.orange,
           () {}, 
@@ -289,7 +291,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         
         Text(
-          "System Operations", 
+          "Operaciones del sistema", 
           style: GoogleFonts.poppins(color: textWhite, fontSize: 20, fontWeight: FontWeight.bold)
         ),
         const SizedBox(height: 20),
@@ -395,7 +397,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children:[
                   Icon(Icons.home, color: accentGreen, size: 28),
                   const SizedBox(width: 8),
-                  Text("Home", style: GoogleFonts.poppins(color: accentGreen, fontWeight: FontWeight.bold)),
+                  Text("Inicio", style: GoogleFonts.poppins(color: accentGreen, fontWeight: FontWeight.bold)),
+
                 ],
               ),
             ),

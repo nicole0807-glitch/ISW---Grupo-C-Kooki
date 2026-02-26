@@ -37,14 +37,14 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   final bool _isSearching = false;
 
   final List<String> _categories = [
-    'Produce',
-    'Dairy',
-    'Protein',
-    'Grains',
-    'Other',
+    'Frutas y verduras',
+    'Lácteos',
+    'Proteínas',
+    'Cereales',
+    'Otros',
   ];
 
-  final List<String> _units = ['g', 'kg', 'mL', 'L', 'Pieces', 'Cups'];
+  final List<String> _units = ['g', 'kg', 'mL', 'L', 'Piezas', 'Tazas'];
 
   @override
   void initState() {
@@ -213,7 +213,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
             onPressed: () => Get.back(),
           ),
           title: Text(
-            isEditing ? 'Edit Ingredient' : 'Add New Ingredient',
+            isEditing ? 'Editar ingrediente' : 'Agregar nuevo ingrediente',
             style: const TextStyle(
               color: Colors.black,
               fontSize: 18,
@@ -223,7 +223,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
           actions: [
             TextButton(
               onPressed: () => Get.back(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
             ),
           ],
         ),
@@ -234,7 +234,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
             children: [
               // ── Ingredient Search ──────────────────────────────────────
               const Text(
-                'Ingredient Name',
+                'Nombre del ingrediente',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -367,7 +367,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
 
               // ── Quantity ───────────────────────────────────────────────
               const Text(
-                'Quantity',
+                'Cantidad',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -390,7 +390,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Required';
+                          return 'Obligatorio';
                         }
                         if (double.tryParse(value) == null) {
                           return 'Número inválido';
@@ -424,7 +424,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
 
               // ── Category ───────────────────────────────────────────────
               const Text(
-                'Category',
+                'Categoría',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -462,7 +462,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
               Row(
                 children: [
                   const Text(
-                    'Expiration Date',
+                    'Fecha de caducidad',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -471,7 +471,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                   ),
                   const Spacer(),
                   const Text(
-                    'Optional',
+                    'Opcional',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -494,7 +494,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                       Text(
                         _expirationDate != null
                             ? '${_expirationDate!.day}/${_expirationDate!.month}/${_expirationDate!.year}'
-                            : 'Select date',
+                            : 'Selecciona fecha',
                         style: TextStyle(
                           color: _expirationDate != null
                               ? Colors.black
@@ -540,7 +540,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                             const Icon(Icons.add, size: 20),
                             const SizedBox(width: 8),
                             Text(
-                              isEditing ? 'Update Ingredient' : 'Add to Pantry',
+                              isEditing ? 'Actualizar ingrediente' : 'Agregar a la despensa',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

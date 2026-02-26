@@ -63,7 +63,7 @@ class _SearchScreenState extends State<SearchScreen> {
               items: const [
                 DropdownMenuItem(
                   value: RecipeSearchSort.recent,
-                  child: Text('Mas recientes'),
+                  child: Text('Más recientes'),
                 ),
                 DropdownMenuItem(
                   value: RecipeSearchSort.alphabetical,
@@ -97,7 +97,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 if (filteredRecipes.isEmpty) {
                   return const Center(
                     child: Text(
-                      'Sin resultados para tu busqueda.',
+                      'Sin resultados para tu búsqueda.',
                       style: TextStyle(fontSize: 16, color: Colors.black54),
                     ),
                   );
