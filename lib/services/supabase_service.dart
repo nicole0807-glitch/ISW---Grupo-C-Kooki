@@ -60,8 +60,8 @@ class SupabaseService {
   }
   
 
-  Future<String> uploadAvatar(String user_id, File imageFile) async {
-    final fileName = '$user_id/profile.png';
+  Future<String> uploadAvatar(String userId, File imageFile) async {
+    final fileName = '$userId/profile.png';
     await _client.storage.from('avatars').upload(
           fileName,
           imageFile,
@@ -122,28 +122,28 @@ class SupabaseService {
     return created['ingredient_id'] as int;
   }
 
-  Future<void> saveUserPreferences(String user_id, List<String> preferences) async {
+  Future<void> saveUserPreferences(String userId, List<String> preferences) async {
     for (String pref in preferences) {
       if (pref.isEmpty || pref == "None") continue;
       
       final int tagId = await _getOrCreateTagId(pref);
       
       await _client.from('User_preferences').upsert({
-        'user_id': user_id,
+        'user_id': userId,
         'tag_id': tagId,
       });
     }
   }
 
-  Future<void> saveUserAllergies(String user_id, List<String> allergies) async {
+  Future<void> saveUserAllergies(String userId, List<String> allergies) async {
     for (String allergy in allergies) {
       if (allergy.isEmpty || allergy == "None") continue;
 
-      final int ingredient_id = await _getOrCreateingredient_id(allergy);
+      final int ingredientId = await _getOrCreateingredient_id(allergy);
 
       await _client.from('User_allergies').upsert({
-        'user_id': user_id,
-        'ingredient_id': ingredient_id,
+        'user_id': userId,
+        'ingredient_id': ingredientId,
       });
     }
   }

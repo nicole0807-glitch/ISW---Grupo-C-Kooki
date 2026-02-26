@@ -33,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor ingresa username y contraseña'),
+          content: Text('Por favor ingresa usuario y contraseña'),
           backgroundColor: Colors.red,
         ),
       );

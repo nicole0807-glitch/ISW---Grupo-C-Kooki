@@ -250,7 +250,7 @@ class GoalRegistrationScreen extends StatelessWidget {
         Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
         const SizedBox(height: 5),
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           onChanged: onChanged,
           items: items,
           decoration: const InputDecoration(border: OutlineInputBorder()),

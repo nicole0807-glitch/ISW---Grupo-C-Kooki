@@ -1,5 +1,4 @@
 
-import 'package:flutter/rendering.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 //Se importa supabase para constuir una instancia privada para manejar el perfil. Esto ya incluye auth.
 
@@ -33,6 +32,32 @@ class ProfileService {
     } catch (e) {
       print('Error en ProfileService: $e');
       return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAvailableRoles() async {
+    try {
+      final res = await _supabase
+          .from('Role')
+          .select('role_id, name')
+          .order('role_id', ascending: true);
+      return (res as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<String?> updateUserRole({
+    required String userId,
+    required int roleId,
+  }) async {
+    try {
+      await _supabase
+          .from('Profile')
+          .update({'role_id': roleId}).eq('user_id', userId);
+      return null;
+    } catch (e) {
+      return e.toString();
     }
   }
 

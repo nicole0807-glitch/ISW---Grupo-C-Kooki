@@ -39,6 +39,10 @@ migrate_working_dir/
 #macos files
 /macos/Flutter/GeneratedPluginRegistrant.swift
 
+#linux files
+/linux/flutter/generated_plugin_registrant.cc
+/linux/flutter/generated_plugins.cmake
+
 
 # Symbolication related
 app.*.symbols

@@ -13,20 +13,20 @@ class _DietSelectionScreenState extends State<DietSelectionScreen> {
   final OnboardingController _controller = OnboardingController();
   
   final List<String> _diets = [
-    "Vegan",
-    "Keto",
-    "Vegetarian",
+    "Vegano",
+    "Ceto",
+    "Vegetariano",
     "Paleo",
-    "Low Carb",
-    "Mediterranean",
+    "Baja en carbohidratos",
+    "Mediterráneo",
   ];
   final List<String> _allergies = [
-    "Dairy",
+    "Lácteos",
     "Gluten",
-    "Soy",
-    "Shellfish",
-    "Nuts",
-    "None",
+    "Soja",
+    "Mariscos",
+    "Frutos secos",
+    "Ninguna",
   ];
 
   @override
@@ -35,7 +35,7 @@ class _DietSelectionScreenState extends State<DietSelectionScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text("2 of 3", style: TextStyle(fontSize: 14)),
+        title: const Text("2 de 3", style: TextStyle(fontSize: 14)),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(6),
           child: LinearProgressIndicator(value: 0.66, color: AppColors.nutveDarkGreen),
@@ -51,7 +51,7 @@ class _DietSelectionScreenState extends State<DietSelectionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "What is your diet?",
+                      "¿Cuál es tu dieta?",
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -59,7 +59,7 @@ class _DietSelectionScreenState extends State<DietSelectionScreen> {
                     ),
                     const SizedBox(height: 20),
                     const Text(
-                      "Dietary patterns:",
+                      "Patrones dietéticos:",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -70,7 +70,7 @@ class _DietSelectionScreenState extends State<DietSelectionScreen> {
                     _buildSelectionGrid(_diets, OnboardingController.diets, true),
                     const SizedBox(height: 30),
                     const Text(
-                      "Allergies:",
+                      "Alergias:",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

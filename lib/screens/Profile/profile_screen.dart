@@ -5,14 +5,16 @@ import 'package:provider/provider.dart';
 import 'package:kooki/screens/Profile/diet_preferences_screen.dart';
 import 'package:kooki/screens/Profile/personal_info_screen.dart';
 import 'package:kooki/services/supabase_service.dart';
-import 'package:provider/provider.dart'; // Necesario para limpiar el estado
+// Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 import '../../controllers/goal_controller.dart'; 
+import '../../controllers/premium_controller.dart';
 import '../auth/login_screen.dart';
 import '../../services/profile_service.dart';
 import '../goals/goal_registration_screen.dart';
-import '../recipe/widgets/macro_chart_widget.dart'; 
+import '../recipe/widgets/macro_chart_widget.dart';
+import '../plan/premium_plan_screen.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -33,6 +35,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Prepare future for FutureBuilder and load other user data
     _profileFuture = _profileService.getProfileData();
     _loadUserData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PremiumController>().loadStatus();
+    });
   }
 
   // --- CARGA DE DATOS ---
@@ -202,6 +207,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     // --- TUS PLACEHOLDERS Y DISEÑO ---
                     _buildProfileHeader(),
+                    const SizedBox(height: 16),
+                    _buildMembershipStatusCard(),
 
                   // SECCIÓN DE METAS (HU-27)
                   _buildSectionHeader(
@@ -273,7 +280,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     text: "Gestionar Suscripción",
                     icon: Icons.star_outline,
                     baseColor: Colors.green,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PremiumPlanScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 30),
@@ -359,6 +373,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onPressed: onAction,
         ),
       ],
+    );
+  }
+
+  Widget _buildMembershipStatusCard() {
+    final premium = context.watch<PremiumController>();
+    final active = premium.isPremium;
+
+    return Card(
+      elevation: 2,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Estado de Membresía",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              active
+                  ? "Tiempo restante: ${premium.daysRemaining} días"
+                  : "Membresía inactiva",
+              style: TextStyle(
+                color: active ? Colors.green.shade700 : Colors.red.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    "Renovación automática",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Switch(
+                  value: premium.autoRenewEnabled,
+                  onChanged: (value) =>
+                      context.read<PremiumController>().setAutoRenew(value),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

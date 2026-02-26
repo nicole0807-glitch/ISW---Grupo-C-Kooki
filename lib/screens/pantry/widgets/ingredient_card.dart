@@ -16,12 +16,12 @@ class IngredientCard extends StatelessWidget {
   }
 
   String _getStatusText() {
-    if (ingredient.isExpired) return 'Expired';
+    if (ingredient.isExpired) return 'Caducado';
     if (ingredient.expiresSoon) {
       final days = ingredient.daysUntilExpiration ?? 0;
-      return 'Expires in $days days';
+      return 'Caduca en $days días';
     }
-    return ingredient.status ?? 'Fresh';
+    return ingredient.status ?? 'Fresco';
   }
 
   void _showOptionsMenu(BuildContext context) {
@@ -39,7 +39,7 @@ class IngredientCard extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.edit, color: Color(0xFF4CAF50)),
-              title: const Text('Edit'),
+              title: const Text('Editar'),
               onTap: () {
                 Navigator.pop(context);
                 Get.to(() => AddIngredientScreen(ingredient: ingredient));
@@ -47,7 +47,7 @@ class IngredientCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete'),
+              title: const Text('Eliminar'),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDelete(context, controller);
@@ -55,7 +55,7 @@ class IngredientCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.cancel, color: Colors.grey),
-              title: const Text('Cancel'),
+              title: const Text('Cancelar'),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -100,7 +100,7 @@ Get.dialog(
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Cancel'),
+            child: const Text('Cancelar'),
           ),
           TextButton(
             onPressed: () async {
@@ -151,7 +151,7 @@ Get.dialog(
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text('Eliminar'),
           ),
         ],
       ),
@@ -230,7 +230,7 @@ Get.dialog(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           ),
           child: const Text(
-            'Edit',
+            'Editar',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,

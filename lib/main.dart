@@ -5,13 +5,15 @@ import 'package:kooki/screens/home/home_screen_content.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'utils/app_colors.dart';
 import 'screens/splash_screen.dart';
-import 'package:provider/provider.dart'; // 1. Importar Provider
-import 'controllers/recipe_controller.dart'; // 2. Importar el controlador
+import 'package:provider/provider.dart';
+import 'controllers/recipe_controller.dart';
 import 'controllers/auth_controller.dart';
 import 'screens/recipe/admin_recipes_screen.dart';
 import 'controllers/home_controller.dart';
+import 'controllers/favorites_controller.dart';
+import 'controllers/premium_controller.dart';
 import 'providers/ingredient_master_provider.dart';
-import 'package:get/get.dart'; 
+import 'package:get/get.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +29,13 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => RecipeAdminController()),
-        ChangeNotifierProvider(create: (_) => HomeController(), child: const HomeScreenContent(),), 
+        ChangeNotifierProvider(create: (_) => HomeController()),
+        ChangeNotifierProvider(
+          create: (_) => FavoritesController()..loadFavorites(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PremiumController()..loadStatus(),
+        ),
       ],
       child: const NutveApp(),
     ),
@@ -39,7 +47,7 @@ class NutveApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(  
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Kooki',
       theme: ThemeData(

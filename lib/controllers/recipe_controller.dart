@@ -1,4 +1,4 @@
-import 'dart:io'; // <--- CORRECCIÓN 1: Necesario para usar "File"
+// <--- CORRECCIÓN 1: Necesario para usar "File"
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/recipe_model.dart';

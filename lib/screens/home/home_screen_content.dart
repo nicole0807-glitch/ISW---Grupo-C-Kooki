@@ -1,192 +1,552 @@
 import 'package:flutter/material.dart';
-import 'package:kooki/screens/recipe/validation_queue_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'package:kooki/screens/recipe/widgets/quick_bite_card.dart';
-import '../../utils/app_colors.dart';
-import '../../services/recipe_service.dart';
+import 'package:kooki/screens/recipe/widgets/recipe_card.dart';
+import '../../controllers/favorites_controller.dart';
+import '../../controllers/home_controller.dart';
 import '../../models/recipe_model.dart';
-import '../recipe/widgets/recipe_card.dart';
-import '../../controllers/home_controller.dart'; 
-import '../recipe/admin_recipes_screen.dart';
+import '../../models/user_recipe_model.dart';
+import '../../services/admin_service.dart';
+import '../../services/recipe_service.dart';
+import '../../utils/app_colors.dart';
+import '../recipe/validation_queue_screen.dart';
+import '../recipe/publish_recipe_screen.dart';
+import '../recipe/user_recipe_detail_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
 
-class HomeScreenContent extends StatelessWidget {
+enum HomeRecipeFilter { all, topRated, quickBites, favorites }
+
+class HomeScreenContent extends StatefulWidget {
   const HomeScreenContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final RecipeService recipeService = RecipeService();
-    final homeController = context.watch<HomeController>();
+  State<HomeScreenContent> createState() => _HomeScreenContentState();
+}
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // --- 1. BANNER ---
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(25),
+class _HomeScreenContentState extends State<HomeScreenContent> {
+  final RecipeService _recipeService = RecipeService();
+
+  String _query = '';
+  HomeRecipeFilter _selectedFilter = HomeRecipeFilter.all;
+
+  List<Recipe> _applyFilters(List<Recipe> recipes, FavoritesController favorites) {
+    return recipes.where((recipe) {
+      final queryMatch =
+          _query.isEmpty ||
+          recipe.title.toLowerCase().contains(_query) ||
+          recipe.ingredients.any((i) => i.name.toLowerCase().contains(_query));
+
+      if (!queryMatch) {
+        return false;
+      }
+
+      switch (_selectedFilter) {
+        case HomeRecipeFilter.all:
+          return true;
+        case HomeRecipeFilter.topRated:
+          return recipe.rating >= 4.5;
+        case HomeRecipeFilter.quickBites:
+          return recipe.tagIds.contains(22);
+        case HomeRecipeFilter.favorites:
+          return favorites.isFavorite(recipe.id);
+      }
+    }).toList();
+  }
+
+  Widget _filterChip(String label, HomeRecipeFilter filter) {
+    final selected = _selectedFilter == filter;
+
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      selectedColor: AppColors.nutveSelectionGreen.withOpacity(0.25),
+      checkmarkColor: AppColors.nutveDarkGreen,
+      onSelected: (_) => setState(() => _selectedFilter = filter),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final homeController = context.watch<HomeController>();
+    final favorites = context.watch<FavoritesController>();
+    final canValidate = homeController.hasPermission(AppPermission.validateRecipes);
+    final canOpenAdmin = homeController.hasPermission(AppPermission.openAdminDashboard);
+    final canModerateCommunity =
+        homeController.hasPermission(AppPermission.moderateCommunityRecipes);
+    final canPublishCommunity =
+        homeController.hasPermission(AppPermission.publishCommunityRecipe);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: RefreshIndicator(
+        color: AppColors.nutveDarkGreen,
+        onRefresh: () async => setState(() {}),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeroBanner(),
+              const SizedBox(height: 20),
+              if (canValidate) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ValidationQueueScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.fact_check),
+                    label: const Text('Cola de validación'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (canOpenAdmin) ...[
+                _buildAdminPanelButton(context),
+                const SizedBox(height: 20),
+              ],
+              _buildSearchBar(),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _filterChip('Todas', HomeRecipeFilter.all),
+                  _filterChip('Más valoradas', HomeRecipeFilter.topRated),
+                  _filterChip('Snacks rápidos', HomeRecipeFilter.quickBites),
+                  _filterChip('Favoritas', HomeRecipeFilter.favorites),
+                ],
+              ),
+              const SizedBox(height: 25),
+              FutureBuilder<List<Recipe>>(
+                future: _recipeService.fetchRecipes(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: CircularProgressIndicator(
+                          color: AppColors.nutveDarkGreen,
+                        ),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Error al cargar recetas'));
+                  }
+
+                  final recipes = snapshot.data ?? [];
+                  if (recipes.isEmpty) {
+                    return const SizedBox();
+                  }
+
+                  final filteredRecipes = _applyFilters(recipes, favorites);
+
+                  if (filteredRecipes.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'Sin resultados para tu búsqueda.',
+                          style: TextStyle(fontSize: 16, color: Colors.black54),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final quickBitesFiltered =
+                      filteredRecipes.where((r) => r.tagIds.contains(22)).toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader('Recetas'),
+                      const SizedBox(height: 15),
+                      _buildHorizontalList(filteredRecipes),
+                      if (quickBitesFiltered.isNotEmpty) ...[
+                        const SizedBox(height: 35),
+                        _buildSectionHeader('Snacks Rápidos y Saludables'),
+                        const SizedBox(height: 10),
+                        _buildVerticalList(quickBitesFiltered),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 40),
+              _buildCommunityHeader(
+                context,
+                canPublishCommunity: canPublishCommunity,
+              ),
+              const SizedBox(height: 15),
+              FutureBuilder<List<UserRecipe>>(
+                future: _recipeService.fetchCommunityRecipes(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return _buildEmptyCommunity();
+                  }
+
+                  final communityRecipes = snapshot.data!;
+                  return SizedBox(
+                    height: 300,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(left: 5, bottom: 20),
+                      itemCount: communityRecipes.length,
+                      itemBuilder: (context, index) => _buildUserRecipeCard(
+                        context,
+                        communityRecipes[index],
+                        canModerateCommunity,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 50),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserRecipeCard(BuildContext context, UserRecipe recipe, bool isAdmin) {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserRecipeDetailScreen(recipe: recipe),
+            ),
+          ),
+          child: Container(
+            width: 230,
+            margin: const EdgeInsets.only(right: 20),
             decoration: BoxDecoration(
-              color: AppColors.nutveDarkGreen,
-              borderRadius: BorderRadius.circular(25),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Desbloquea tu \nPotencial",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: Image.network(
+                    recipe.imageUrl,
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 140,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.broken_image),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.nutveDarkGreen,
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.person, size: 14, color: AppColors.nutveDarkGreen),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              recipe.userName,
+                              style: const TextStyle(
+                                color: AppColors.nutveDarkGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildSmallTag(Icons.access_time_filled, recipe.duration),
+                          _buildSmallTag(
+                            Icons.star_rounded,
+                            recipe.avgRating.toStringAsFixed(1),
+                            color: Colors.orange,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  onPressed: () {},
-                  child: const Text("MEJORAR PLAN"),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-
-          // --- 1.5 SECCIÓN DE BOTONES DE ROL (DINÁMICA) ---
-          
-          // Botón para Nutricionistas
-         if (homeController.isNutricionista) ...[
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+        if (isAdmin)
+          Positioned(
+            top: 10,
+            right: 30,
+            child: GestureDetector(
+              onTap: () => _confirmRecipeDeletion(context, recipe),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
                 ),
-                onPressed: () {
-                  // --- AGREGA ESTA LÍNEA ---
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ValidationQueueScreen()),
-                  );
-                },
-                icon: const Icon(Icons.fact_check),
-                label: const Text("COLA DE VALIDACIÓN"),
-              ),
-            ),
-            const SizedBox(height: 15),
-          ],
-          // Botón para Administradores
-          if (homeController.isAdmin) ...[
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1B2521), // Usé el color oscuro del dashboard
-                  foregroundColor: const Color(0xFF22C55E), // Usé el verde del dashboard
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                ),
-                icon: const Icon(Icons.dashboard), // Cambié el icono a dashboard
-                label: const Text("ADMIN DASHBOARD"), // Cambié el texto
-                onPressed: () {
-                  // Redirección al AdminDashboardScreen que creamos antes
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-
-          // --- 2. BARRA DE BÚSQUEDA ---
-          TextField(
-            decoration: InputDecoration(
-              hintText: "Buscar receta...",
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide.none,
+                child: const Icon(Icons.delete_sweep, color: Colors.white, size: 20),
               ),
             ),
           ),
-          const SizedBox(height: 25),
+      ],
+    );
+  }
 
-          // --- 3. SECCIÓN DE RECETAS ---
-          const Text(
-            "Más Populares",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+  void _confirmRecipeDeletion(BuildContext context, UserRecipe recipe) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Receta'),
+        content: Text("¿Deseas eliminar '${recipe.title}' de la comunidad?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
           ),
-          const SizedBox(height: 15),
-
-          FutureBuilder<List<Recipe>>(
-            future: recipeService.fetchRecipes(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: AppColors.nutveDarkGreen));
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await AdminService().deleteRecipe(recipe.id, false);
+              if (mounted) {
+                setState(() {});
               }
-              if (snapshot.hasError) {
-                return Center(child: Text("Error al cargar recetas: ${snapshot.error}"));
-              }
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text("No se encontraron recetas."));
-              }
-
-              final recipes = snapshot.data!;
-              final List<Recipe> topRatedRecipes = recipes.where((r) => r.rating >= 4.5).toList();
-              final List<Recipe> quickBitesRecipes = recipes.where((r) => r.tagIds.contains(22)).toList();
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 320,
-                    child: topRatedRecipes.isEmpty
-                        ? const Center(child: Text("No hay recetas destacadas aún"))
-                        : ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: topRatedRecipes.length,
-                            itemBuilder: (context, index) => RecipeCard(recipe: topRatedRecipes[index]),
-                          ),
-                  ),
-                  const SizedBox(height: 35),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Snacks Rápidos y Saludables", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text("View All", style: TextStyle(color: AppColors.nutveSelectionGreen)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  quickBitesRecipes.isEmpty
-                      ? const Center(child: Text("No se encontraron snacks rápidos."))
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: quickBitesRecipes.length > 3 ? 3 : quickBitesRecipes.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 15),
-                          itemBuilder: (context, index) => QuickBiteCard(recipe: quickBitesRecipes[index]),
-                        ),
-                  const SizedBox(height: 50),
-                ],
-              );
             },
+            child: const Text('Confirmar Borrado'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAdminPanelButton(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: const LinearGradient(colors: [Colors.black, Colors.black87]),
+      ),
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+        icon: const Icon(Icons.psychology, color: Colors.amber),
+        label: const Text(
+          'Panel de Administrador',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: AppColors.nutveDarkGreen,
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Desbloquea tu \nPotencial',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 15),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.nutveDarkGreen,
+            ),
+            onPressed: () {},
+            child: const Text(
+              'MEJORAR PLAN',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextField(
+        onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
+        decoration: InputDecoration(
+          hintText: 'Buscar receta...',
+          prefixIcon: const Icon(Icons.search, color: AppColors.nutveDarkGreen),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        TextButton(
+          onPressed: () {},
+          child: const Text(
+            'Ver todo',
+            style: TextStyle(color: AppColors.nutveSelectionGreen),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHorizontalList(List<Recipe> recipes) {
+    return SizedBox(
+      height: 310,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: recipes.length,
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.only(right: 15),
+          child: RecipeCard(recipe: recipes[index]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerticalList(List<Recipe> recipes) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: recipes.length > 3 ? 3 : recipes.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 15),
+      itemBuilder: (context, index) => QuickBiteCard(recipe: recipes[index]),
+    );
+  }
+
+  Widget _buildCommunityHeader(
+    BuildContext context, {
+    required bool canPublishCommunity,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Comunidad kooki',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Inspírate con otros usuarios',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ],
+        ),
+        if (canPublishCommunity)
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PublishRecipeScreen()),
+            ),
+            icon: const Icon(
+              Icons.add_circle,
+              color: AppColors.nutveDarkGreen,
+              size: 30,
+            ),
+          )
+        else
+          const SizedBox(width: 30),
+      ],
+    );
+  }
+
+  Widget _buildSmallTag(IconData icon, String text, {Color color = Colors.grey}) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[700],
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyCommunity() {
+    return const Center(
+      child: Text(
+        '¡Aún no hay recetas aquí!',
+        style: TextStyle(color: Colors.grey),
       ),
     );
   }

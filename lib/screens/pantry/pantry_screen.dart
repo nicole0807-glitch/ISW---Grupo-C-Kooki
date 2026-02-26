@@ -31,7 +31,7 @@ class _PantryScreenState extends State<PantryScreen> {
         title: Row(
           children: [
             const Text(
-              'Pantry Management',
+              'Gestión de despensa',
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 20,
@@ -42,7 +42,7 @@ class _PantryScreenState extends State<PantryScreen> {
             TextButton(
               onPressed: () => controller.clearAll(context),
               child: const Text(
-                'Clear All',
+                'Borrar todo',
                 style: TextStyle(
                   color: Colors.red,
                   fontSize: 14,
@@ -62,7 +62,7 @@ class _PantryScreenState extends State<PantryScreen> {
             child: TextField(
               onChanged: controller.setSearchQuery,
               decoration: InputDecoration(
-                hintText: 'Search Ingredients...',
+                hintText: 'Buscar ingredientes...',
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 filled: true,
                 fillColor: const Color(0xFFF5F5F5),
@@ -85,7 +85,7 @@ class _PantryScreenState extends State<PantryScreen> {
               builder: (controller) => Row(
                 children: [
                   Text(
-                    'Showing ${controller.filteredIngredients.length} of ${controller.totalItems} items',
+                    'Mostrando ${controller.filteredIngredients.length} de ${controller.totalItems} elementos',
                     style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 14,
@@ -121,8 +121,8 @@ class _PantryScreenState extends State<PantryScreen> {
                         const SizedBox(height: 16),
                         Text(
                           controller.searchQuery.value.isNotEmpty
-                              ? 'No ingredients found'
-                              : 'Your pantry is empty',
+                              ? 'No se encontraron ingredientes'
+                              : 'Tu despensa está vacía',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.grey[600],
@@ -131,8 +131,8 @@ class _PantryScreenState extends State<PantryScreen> {
                         const SizedBox(height: 8),
                         Text(
                           controller.searchQuery.value.isNotEmpty
-                              ? 'Try a different search'
-                              : 'Add your first ingredient',
+                              ? 'Prueba con otra búsqueda'
+                              : 'Agrega tu primer ingrediente',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[400],
