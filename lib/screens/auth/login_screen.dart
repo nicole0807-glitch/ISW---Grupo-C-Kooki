@@ -18,6 +18,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final AuthController _authController = AuthController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  int _passwordLength = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(() {
+      setState(() {
+        _passwordLength = _passwordController.text.length;
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -113,28 +125,63 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _buildField("Username", Icons.person_outline, _usernameController),
+                    _buildField(
+                      "Username",
+                      Icons.person_outline,
+                      _usernameController,
+                    ),
                     const SizedBox(height: 15),
-                    _buildField("Password", Icons.lock_outline, _passwordController, isPass: true),
-                    const SizedBox(height: 25),
-                    
-                    // Botón con estado de carga
-                    _isLoading 
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppColors.nutveDarkGreen,
-                            minimumSize: const Size(double.infinity, 50),
-                          ),
-                          onPressed: _login,
-                          child: const Text("INGRESAR"),
+                    _buildPasswordField(),
+                    if (_passwordLength > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, left: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _passwordLength >= 6
+                                  ? Icons.check_circle_outline
+                                  : Icons.info_outline,
+                              size: 14,
+                              color: _passwordLength >= 6
+                                  ? AppColors.nutveSelectionGreen
+                                  : Colors.redAccent,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _passwordLength >= 6
+                                  ? '✓ Contraseña válida'
+                                  : 'Faltan ${6 - _passwordLength} caracteres',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _passwordLength >= 6
+                                    ? AppColors.nutveSelectionGreen
+                                    : Colors.redAccent,
+                              ),
+                            ),
+                          ],
                         ),
-                        
+                      ),
+                    const SizedBox(height: 25),
+
+                    // Botón con estado de carga
+                    _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppColors.nutveDarkGreen,
+                              minimumSize: const Size(double.infinity, 50),
+                            ),
+                            onPressed: _login,
+                            child: const Text("INGRESAR"),
+                          ),
+
                     TextButton(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterScreen(),
+                        ),
                       ),
                       child: const Text(
                         "¿No tienes cuenta? Crear perfil",
@@ -151,7 +198,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildField(String label, IconData icon, TextEditingController? controller, {bool isPass = false}) {
+  Widget _buildField(
+    String label,
+    IconData icon,
+    TextEditingController? controller, {
+    bool isPass = false,
+  }) {
     return TextField(
       controller: controller,
       obscureText: isPass,
@@ -166,6 +218,37 @@ class _LoginScreenState extends State<LoginScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Colors.white24),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.lock_outline, color: Colors.white60),
+        labelText: 'Password',
+        labelStyle: const TextStyle(color: Colors.white60),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white24),
+        ),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+            color: Colors.white60,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
         ),
       ),
     );
