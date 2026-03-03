@@ -13,6 +13,8 @@ import 'controllers/home_controller.dart';
 import 'controllers/favorites_controller.dart';
 import 'controllers/premium_controller.dart';
 import 'providers/ingredient_master_provider.dart';
+import 'controllers/cooking_controller.dart';
+import 'controllers/pantry_controller.dart';
 import 'package:get/get.dart';
 
 void main() async {
@@ -25,6 +27,8 @@ void main() async {
   );
 
   Get.put(IngredientMasterProvider());
+  Get.put(CookingController());
+  Get.put(PantryController());
   runApp(
     MultiProvider(
       providers: [
