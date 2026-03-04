@@ -10,8 +10,12 @@ import 'controllers/recipe_controller.dart'; // 2. Importar el controlador
 import 'controllers/auth_controller.dart';
 import 'screens/recipe/admin_recipes_screen.dart';
 import 'controllers/home_controller.dart';
+import 'controllers/favorites_controller.dart';
+import 'controllers/premium_controller.dart';
 import 'providers/ingredient_master_provider.dart';
-import 'package:get/get.dart'; 
+import 'controllers/cooking_controller.dart';
+import 'controllers/pantry_controller.dart';
+import 'package:get/get.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,11 +27,19 @@ void main() async {
   );
 
   Get.put(IngredientMasterProvider());
+  Get.put(CookingController());
+  Get.put(PantryController());
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => RecipeAdminController()),
-        ChangeNotifierProvider(create: (_) => HomeController(), child: const HomeScreenContent(),), 
+        ChangeNotifierProvider(create: (_) => HomeController()),
+        ChangeNotifierProvider(
+          create: (_) => FavoritesController()..loadFavorites(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PremiumController()..loadStatus(),
+        ),
       ],
       child: const NutveApp(),
     ),
@@ -39,7 +51,7 @@ class NutveApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(  
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Kooki',
       theme: ThemeData(

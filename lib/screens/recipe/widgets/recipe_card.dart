@@ -43,23 +43,32 @@ class RecipeCard extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(25),
+                  ),
                   child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
                       ? Image.network(
                           recipe.imageUrl!,
                           height: 170, // Un poco más alto para mejor proporción
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: 170,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.broken_image, color: Colors.grey),
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                height: 170,
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                ),
+                              ),
                         )
                       : Container(
                           height: 170,
                           color: AppColors.nutveDarkGreen.withOpacity(0.1),
-                          child: const Icon(Icons.restaurant, color: AppColors.nutveDarkGreen),
+                          child: const Icon(
+                            Icons.restaurant,
+                            color: AppColors.nutveDarkGreen,
+                          ),
                         ),
                 ),
 
@@ -86,7 +95,10 @@ class RecipeCard extends StatelessWidget {
                     bottom: 12,
                     left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.nutveDarkGreen.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(10),
@@ -94,10 +106,14 @@ class RecipeCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star, color: AppColors.nutveSelectionGreen, size: 12),
+                          const Icon(
+                            Icons.star,
+                            color: AppColors.nutveSelectionGreen,
+                            size: 12,
+                          ),
                           const SizedBox(width: 4),
                           const Text(
-                            "TOP RATED",
+                            "MÁS VALORADA",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 10,
@@ -130,26 +146,39 @@ class RecipeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    recipe.description ?? "Explora esta deliciosa receta saludable.",
+                    recipe.description ??
+                        "Explora esta deliciosa receta saludable.",
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                   const SizedBox(height: 15),
-                  
+
                   Row(
                     children: [
-                      const Icon(Icons.timer_outlined, size: 16, color: Colors.orange),
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         recipe.cookingTime ?? "-- min",
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppColors.nutveSelectionGreen.withOpacity(0.15),
+                          color: AppColors.nutveSelectionGreen.withOpacity(
+                            0.15,
+                          ),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
