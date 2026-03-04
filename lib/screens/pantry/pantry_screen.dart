@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/pantry_controller.dart';
+import '../../controllers/shopping_controller.dart';
 import 'add_ingredient_screen.dart';
+import 'shopping_cart_screen.dart';
 import 'widgets/ingredient_card.dart';
 import 'widgets/category_chips.dart';
 
@@ -14,11 +16,21 @@ class PantryScreen extends StatefulWidget {
 
 class _PantryScreenState extends State<PantryScreen> {
   late PantryController controller;
+  late ShoppingController shoppingController;
 
   @override
   void initState() {
     super.initState();
     controller = Get.put(PantryController());
+    shoppingController = Get.put(ShoppingController());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Recargar ítems del carrito cada vez que la pantalla aparezca
+    // para que el badge siempre esté actualizado
+    shoppingController.loadCartItems();
   }
 
   @override
@@ -39,15 +51,14 @@ class _PantryScreenState extends State<PantryScreen> {
               ),
             ),
             const Spacer(),
-            TextButton(
+            // Botón de carrito animado (negro con blanco)
+            Obx(() => _buildCartButton()),
+            const SizedBox(width: 4),
+            // Botón de papelera
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: 'Vaciar despensa',
               onPressed: () => controller.clearAll(context),
-              child: const Text(
-                'Borrar todo',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 14,
-                ),
-              ),
             ),
           ],
         ),
@@ -86,10 +97,7 @@ class _PantryScreenState extends State<PantryScreen> {
                 children: [
                   Text(
                     'Mostrando ${controller.filteredIngredients.length} de ${controller.totalItems} ingredientes',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                 ],
               ),
@@ -102,9 +110,7 @@ class _PantryScreenState extends State<PantryScreen> {
               builder: (controller) {
                 if (controller.isLoading.value) {
                   return const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF4CAF50),
-                    ),
+                    child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
                   );
                 }
 
@@ -165,7 +171,7 @@ class _PantryScreenState extends State<PantryScreen> {
         onPressed: () {
           // Opción 1: Con GetX
           // Get.to(() => const AddIngredientScreen());
-          
+
           // Opción 2: Con Navigator (descomenta si GetX no funciona)
           Navigator.push(
             context,
@@ -176,6 +182,67 @@ class _PantryScreenState extends State<PantryScreen> {
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, size: 32),
+      ),
+    );
+  }
+
+  /// Botón de carrito con badge de cantidad, fondo negro e icono blanco.
+  Widget _buildCartButton() {
+    final count = shoppingController.cartCount;
+
+    return GestureDetector(
+      onTap: () {
+        // Recargar ítems antes de abrir el carrito
+        shoppingController.loadCartItems();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ShoppingCartScreen()),
+        );
+      },
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: const BoxDecoration(
+          color: Color(0xFF4CAF50),
+          shape: BoxShape.circle,
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Center(
+              child: Icon(
+                Icons.shopping_cart_outlined,
+                color: Colors.black,
+                size: 20,
+              ),
+            ),
+            if (count > 0)
+              Positioned(
+                right: -4,
+                top: -4,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

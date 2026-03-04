@@ -122,8 +122,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                 },
                               ),
                               const Icon(
-                                Icons.shopping_cart_outlined,
-                                color: Colors.grey,
+                                Icons.shopping_cart,
+                                color: Colors.black,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
@@ -208,13 +208,24 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             },
                       child: _cookingController.isAddingToCart.value
                           ? const CircularProgressIndicator(color: Colors.black)
-                          : const Text(
-                              "Agregar al 🛒",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Agregar al carrito",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Icon(
+                                  Icons.shopping_cart,
+                                  color: Colors.black,
+                                  size: 22,
+                                ),
+                              ],
                             ),
                     ),
                   ),
