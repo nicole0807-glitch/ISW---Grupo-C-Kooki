@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:get/get.dart';
 
 import 'package:kooki/screens/recipe/widgets/quick_bite_card.dart';
 import 'package:kooki/screens/recipe/widgets/recipe_card.dart';
 import '../../controllers/favorites_controller.dart';
 import '../../controllers/home_controller.dart';
+import '../../controllers/perfect_match_controller.dart';
 import '../../models/recipe_model.dart';
 import '../../models/user_recipe_model.dart';
 import '../../services/admin_service.dart';
@@ -14,7 +16,6 @@ import '../recipe/validation_queue_screen.dart';
 import '../recipe/publish_recipe_screen.dart';
 import '../recipe/user_recipe_detail_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
-import '../recipe/perfect_match_screen.dart'; // <-- IMPORTANTE: Ajusta esta ruta si es necesario
 
 enum HomeRecipeFilter { all, topRated, quickBites, favorites }
 
@@ -27,6 +28,7 @@ class HomeScreenContent extends StatefulWidget {
 
 class _HomeScreenContentState extends State<HomeScreenContent> {
   final RecipeService _recipeService = RecipeService();
+  final PerfectMatchController _perfectMatchController = Get.put(PerfectMatchController());
 
   String _query = '';
   HomeRecipeFilter _selectedFilter = HomeRecipeFilter.all;
@@ -82,7 +84,10 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         color: AppColors.nutveDarkGreen,
-        onRefresh: () async => setState(() {}),
+        onRefresh: () async {
+          await _perfectMatchController.findPerfectMatches(); // Refresca las coincidencias
+          setState(() {});
+        },
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
@@ -123,13 +128,8 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                 ],
               ),
               
-              const SizedBox(height: 20),
-              
-              // ---> INICIO: BANNER DE PARTIDO PERFECTO <---
-              _buildPerfectMatchBanner(context),
-              // ---> FIN: BANNER DE PARTIDO PERFECTO <---
-
               const SizedBox(height: 25),
+              
               FutureBuilder<List<Recipe>>(
                 future: _recipeService.fetchRecipes(),
                 builder: (context, snapshot) {
@@ -169,22 +169,61 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   final quickBitesFiltered =
                       filteredRecipes.where((r) => r.tagIds.contains(22)).toList();
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children:[
-                      _buildSectionHeader('Recetas'),
-                      const SizedBox(height: 15),
-                      _buildHorizontalList(filteredRecipes),
-                      if (quickBitesFiltered.isNotEmpty) ...[
-                        const SizedBox(height: 35),
-                        _buildSectionHeader('Snacks Rápidos y Saludables'),
-                        const SizedBox(height: 10),
-                        _buildVerticalList(quickBitesFiltered),
+                  // Obx reacciona a los cambios en el controlador de coincidencias
+                  return Obx(() {
+                    // Filtramos las Perfectas
+                    final perfectMatchesFiltered = filteredRecipes
+                        .where((r) => _perfectMatchController.perfectMatches
+                            .any((pm) => pm.id == r.id))
+                        .toList();
+
+                    // Filtramos las Cercanas (Máximo 2 faltantes)
+                    final closeMatchesFiltered = filteredRecipes
+                        .where((r) => _perfectMatchController.closeMatches
+                            .any((cm) => cm.id == r.id))
+                        .toList();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children:[
+                        // ---> INICIO: PARTIDO PERFECTO <---
+                       
+
+                        _buildSectionHeader('Recetas'),
+                        const SizedBox(height: 15),
+                        _buildHorizontalList(filteredRecipes),
+                        
+                         if (perfectMatchesFiltered.isNotEmpty) ...[
+                          _buildSectionHeader('Partido Perfecto'),
+                          const SizedBox(height: 15),
+                          _buildHorizontalList(perfectMatchesFiltered),
+                          const SizedBox(height: 35),
+                        ],
+                        
+                        // ---> INICIO: COINCIDENCIA CERCANA <---
+                        if (closeMatchesFiltered.isNotEmpty) ...[
+                          _buildSectionHeader('Coincidencia Cercana'),
+                          const Text(
+                            'Te faltan 1 o 2 ingredientes para estas recetas',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                          const SizedBox(height: 15),
+                          _buildHorizontalList(closeMatchesFiltered),
+                          const SizedBox(height: 35),
+                        ],
+
+                        if (quickBitesFiltered.isNotEmpty) ...[
+                          const SizedBox(height: 35),
+                          _buildSectionHeader('Snacks Rápidos y Saludables'),
+                          const SizedBox(height: 10),
+                          _buildVerticalList(quickBitesFiltered),
+                        ],
                       ],
-                    ],
-                  );
+                    );
+                  });
                 },
               ),
+
               const SizedBox(height: 40),
               _buildCommunityHeader(
                 context,
@@ -224,77 +263,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       ),
     );
   }
-
-  // ==========================================
-  // WIDGET PARTIDO PERFECTO
-  // ==========================================
-  Widget _buildPerfectMatchBanner(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => PerfectMatchScreen()),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.nutveSelectionGreen, AppColors.nutveDarkGreen],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow:[
-            BoxShadow(
-              color: AppColors.nutveDarkGreen.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          children:[
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 30),
-            ),
-            const SizedBox(width: 15),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children:[
-                  Text(
-                    'Partido Perfecto',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Cocina con lo que ya tienes en tu despensa.',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
-          ],
-        ),
-      ),
-    );
-  }
-  // ==========================================
 
   Widget _buildUserRecipeCard(BuildContext context, UserRecipe recipe, bool isAdmin) {
     return Stack(
@@ -396,7 +364,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                 decoration: const BoxDecoration(
                   color: Colors.red,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
+                  boxShadow:[BoxShadow(color: Colors.black26, blurRadius: 5)],
                 ),
                 child: const Icon(Icons.delete_sweep, color: Colors.white, size: 20),
               ),
