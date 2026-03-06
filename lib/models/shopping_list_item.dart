@@ -7,6 +7,7 @@ class ShoppingListItem {
   final String unit;
   final bool isBought;
   final DateTime? createdAt;
+  final String? ingredientName; // Nombre del ingrediente (via JOIN)
 
   const ShoppingListItem({
     this.id,
@@ -16,6 +17,7 @@ class ShoppingListItem {
     required this.unit,
     this.isBought = false,
     this.createdAt,
+    this.ingredientName,
   });
 
   Map<String, dynamic> toJson() => {
@@ -27,6 +29,9 @@ class ShoppingListItem {
   };
 
   factory ShoppingListItem.fromJson(Map<String, dynamic> json) {
+    // Leer nombre del JOIN con tabla Ingredient
+    final master = json['Ingredient'] as Map<String, dynamic>?;
+
     return ShoppingListItem(
       id: json['id'] as int?,
       userId: json['user_id'] as String,
@@ -37,6 +42,18 @@ class ShoppingListItem {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
+      ingredientName: master?['name'] as String?,
     );
+  }
+
+  /// Nombre a mostrar: usa el JOIN o un fallback.
+  String get displayName => ingredientName ?? 'Ingrediente #$ingredientId';
+
+  /// Cantidad formateada con unidad.
+  String get displayQuantity {
+    if (quantity == quantity.truncateToDouble()) {
+      return '${quantity.toInt()} $unit';
+    }
+    return '${quantity.toStringAsFixed(1)} $unit';
   }
 }
