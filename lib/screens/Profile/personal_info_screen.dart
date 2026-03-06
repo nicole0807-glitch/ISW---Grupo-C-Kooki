@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:kooki/services/image_service.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/home_controller.dart';
 import '../../services/profile_service.dart';
+import '../../services/image_service.dart';
+import 'dart:io';
 
 class PersonalInfoScreen extends StatefulWidget {
   const PersonalInfoScreen({super.key});
@@ -12,11 +15,14 @@ class PersonalInfoScreen extends StatefulWidget {
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   final _profileService = ProfileService();
+  final _imageService = ImageService();
+
   late Future<Map<String, dynamic>?> _userDataFuture;
   List<Map<String, dynamic>> _roles = [];
   int? _selectedRoleId;
   bool _rolesLoading = false;
   bool _savingRole = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -73,6 +79,28 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     if (error == null) {
       await context.read<HomeController>().loadUserRole();
       _refreshData();
+    }
+  }
+
+  Future<void> _changeAvatar() async {
+    final File? image = await _imageService.pickImage();
+
+    if (image != null) {
+      setState(() => _isLoading = true);
+
+      final String? imageURL = await _imageService.uploadAvatar(image);
+
+      if (imageURL != null) {
+        await _profileService.updateAvatarURL(imageURL);
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Avatar actualizado con éxito!!"))
+        );
+
+      } else {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -256,13 +284,17 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 Positioned(
                   right: 0,
                   bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
+                  child: GestureDetector(
+                    onTap: _changeAvatar,
+
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
                       color: Color.fromARGB(255, 19, 236, 91),
                       shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
                     ),
-                    child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
                   ),
                 )
               ],
