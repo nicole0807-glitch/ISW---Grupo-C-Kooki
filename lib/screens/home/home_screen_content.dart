@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:get/get.dart';
 
 import 'package:kooki/screens/recipe/widgets/quick_bite_card.dart';
 import 'package:kooki/screens/recipe/widgets/recipe_card.dart';
 import '../../controllers/favorites_controller.dart';
 import '../../controllers/home_controller.dart';
+import '../../controllers/perfect_match_controller.dart';
 import '../../models/recipe_model.dart';
 import '../../models/user_recipe_model.dart';
 import '../../services/admin_service.dart';
@@ -26,6 +28,7 @@ class HomeScreenContent extends StatefulWidget {
 
 class _HomeScreenContentState extends State<HomeScreenContent> {
   final RecipeService _recipeService = RecipeService();
+  final PerfectMatchController _perfectMatchController = Get.put(PerfectMatchController());
 
   String _query = '';
   HomeRecipeFilter _selectedFilter = HomeRecipeFilter.all;
@@ -81,12 +84,15 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         color: AppColors.nutveDarkGreen,
-        onRefresh: () async => setState(() {}),
+        onRefresh: () async {
+          await _perfectMatchController.findPerfectMatches(); // Refresca las coincidencias
+          setState(() {});
+        },
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            children:[
               _buildHeroBanner(),
               const SizedBox(height: 20),
               if (canValidate) ...[
@@ -114,14 +120,16 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: [
+                children:[
                   _filterChip('Todas', HomeRecipeFilter.all),
                   _filterChip('Más valoradas', HomeRecipeFilter.topRated),
                   _filterChip('Snacks rápidos', HomeRecipeFilter.quickBites),
                   _filterChip('Favoritas', HomeRecipeFilter.favorites),
                 ],
               ),
+              
               const SizedBox(height: 25),
+              
               FutureBuilder<List<Recipe>>(
                 future: _recipeService.fetchRecipes(),
                 builder: (context, snapshot) {
@@ -139,7 +147,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                     return const Center(child: Text('Error al cargar recetas'));
                   }
 
-                  final recipes = snapshot.data ?? [];
+                  final recipes = snapshot.data ??[];
                   if (recipes.isEmpty) {
                     return const SizedBox();
                   }
@@ -161,22 +169,61 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   final quickBitesFiltered =
                       filteredRecipes.where((r) => r.tagIds.contains(22)).toList();
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionHeader('Recetas'),
-                      const SizedBox(height: 15),
-                      _buildHorizontalList(filteredRecipes),
-                      if (quickBitesFiltered.isNotEmpty) ...[
-                        const SizedBox(height: 35),
-                        _buildSectionHeader('Snacks Rápidos y Saludables'),
-                        const SizedBox(height: 10),
-                        _buildVerticalList(quickBitesFiltered),
+                  // Obx reacciona a los cambios en el controlador de coincidencias
+                  return Obx(() {
+                    // Filtramos las Perfectas
+                    final perfectMatchesFiltered = filteredRecipes
+                        .where((r) => _perfectMatchController.perfectMatches
+                            .any((pm) => pm.id == r.id))
+                        .toList();
+
+                    // Filtramos las Cercanas (Máximo 2 faltantes)
+                    final closeMatchesFiltered = filteredRecipes
+                        .where((r) => _perfectMatchController.closeMatches
+                            .any((cm) => cm.id == r.id))
+                        .toList();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children:[
+                        // ---> INICIO: PARTIDO PERFECTO <---
+                       
+
+                        _buildSectionHeader('Recetas'),
+                        const SizedBox(height: 15),
+                        _buildHorizontalList(filteredRecipes),
+                        
+                         if (perfectMatchesFiltered.isNotEmpty) ...[
+                          _buildSectionHeader('Partido Perfecto'),
+                          const SizedBox(height: 15),
+                          _buildHorizontalList(perfectMatchesFiltered),
+                          const SizedBox(height: 35),
+                        ],
+                        
+                        // ---> INICIO: COINCIDENCIA CERCANA <---
+                        if (closeMatchesFiltered.isNotEmpty) ...[
+                          _buildSectionHeader('Coincidencia Cercana'),
+                          const Text(
+                            'Te faltan 1 o 2 ingredientes para estas recetas',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                          const SizedBox(height: 15),
+                          _buildHorizontalList(closeMatchesFiltered),
+                          const SizedBox(height: 35),
+                        ],
+
+                        if (quickBitesFiltered.isNotEmpty) ...[
+                          const SizedBox(height: 35),
+                          _buildSectionHeader('Snacks Rápidos y Saludables'),
+                          const SizedBox(height: 10),
+                          _buildVerticalList(quickBitesFiltered),
+                        ],
                       ],
-                    ],
-                  );
+                    );
+                  });
                 },
               ),
+
               const SizedBox(height: 40),
               _buildCommunityHeader(
                 context,
@@ -219,7 +266,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
   Widget _buildUserRecipeCard(BuildContext context, UserRecipe recipe, bool isAdmin) {
     return Stack(
-      children: [
+      children:[
         GestureDetector(
           onTap: () => Navigator.push(
             context,
@@ -233,7 +280,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
+              boxShadow:[
                 BoxShadow(
                   color: Colors.black.withOpacity(0.08),
                   blurRadius: 15,
@@ -243,7 +290,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children:[
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   child: Image.network(
@@ -262,7 +309,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    children:[
                       Text(
                         recipe.title,
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -271,7 +318,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       ),
                       const SizedBox(height: 6),
                       Row(
-                        children: [
+                        children:[
                           const Icon(Icons.person, size: 14, color: AppColors.nutveDarkGreen),
                           const SizedBox(width: 4),
                           Expanded(
@@ -290,7 +337,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
+                        children:[
                           _buildSmallTag(Icons.access_time_filled, recipe.duration),
                           _buildSmallTag(
                             Icons.star_rounded,
@@ -317,7 +364,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                 decoration: const BoxDecoration(
                   color: Colors.red,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
+                  boxShadow:[BoxShadow(color: Colors.black26, blurRadius: 5)],
                 ),
                 child: const Icon(Icons.delete_sweep, color: Colors.white, size: 20),
               ),
@@ -333,7 +380,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar Receta'),
         content: Text("¿Deseas eliminar '${recipe.title}' de la comunidad?"),
-        actions: [
+        actions:[
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancelar'),
@@ -391,7 +438,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children:[
           const Text(
             'Desbloquea tu \nPotencial',
             style: TextStyle(
@@ -420,7 +467,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
-        boxShadow: [
+        boxShadow:[
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
@@ -447,7 +494,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   Widget _buildSectionHeader(String title) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
+      children:[
         Text(
           title,
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -493,10 +540,10 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
+      children:[
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          children:[
             Text(
               'Comunidad kooki',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -527,7 +574,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
   Widget _buildSmallTag(IconData icon, String text, {Color color = Colors.grey}) {
     return Row(
-      children: [
+      children:[
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 4),
         Text(

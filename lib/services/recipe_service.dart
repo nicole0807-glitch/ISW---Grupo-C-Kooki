@@ -133,6 +133,7 @@ class RecipeService {
       var query = _supabase.from('Recipes').select('''
         *,
         "Recipe_Ingredients" (
+          ingredient_id,
           amount,
           unit_abbreviation,
           "Ingredient" ( name )
