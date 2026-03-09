@@ -26,7 +26,7 @@ class IngredientCard extends StatelessWidget {
 
   void _showOptionsMenu(BuildContext context) {
     final controller = Get.find<PantryController>();
-    
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -64,26 +64,29 @@ class IngredientCard extends StatelessWidget {
     );
   }
 
- void _confirmDelete(BuildContext context, PantryController controller) {
-  // DEBUG: Ver todos los datos del ingrediente
-  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  print('🔍 DEBUG - Datos del ingrediente:');
-  print('   pantryId: ${ingredient.pantryId}');
-  print('   id (getter): ${ingredient.id}');
-  print('   ingredientMasterId: ${ingredient.ingredientMasterId}');
-  print('   name: ${ingredient.name}');
-  print('   userId: ${ingredient.userId}');
-  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  void _confirmDelete(BuildContext context, PantryController controller) {
+    // DEBUG: Ver todos los datos del ingrediente
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🔍 DEBUG - Datos del ingrediente:');
+    print('   pantryId: ${ingredient.pantryId}');
+    print('   id (getter): ${ingredient.id}');
+    print('   ingredientMasterId: ${ingredient.ingredientMasterId}');
+    print('   name: ${ingredient.name}');
+    print('   userId: ${ingredient.userId}');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // Intentar obtener el ID: primero pantryId, luego id, luego ingredientMasterId
-    final deleteId = ingredient.pantryId?.toString() ?? 
-                     ingredient.id ?? 
-                     ingredient.ingredientMasterId.toString();
+    // Intentar obtener el ID: primero pantryId, luego id, luego ingredientMasterId
+    final deleteId =
+        ingredient.pantryId?.toString() ??
+        ingredient.id ??
+        ingredient.ingredientMasterId.toString();
 
-Get.dialog(
+    Get.dialog(
       AlertDialog(
         title: const Text('Eliminar Ingrediente'),
-        content: Text('¿Estás seguro de que quieres eliminar ${ingredient.name}?'),
+        content: Text(
+          '¿Estás seguro de que quieres eliminar ${ingredient.name}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
@@ -96,9 +99,7 @@ Get.dialog(
               // Mostrar loading
               Get.dialog(
                 const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF4CAF50),
-                  ),
+                  child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
                 ),
                 barrierDismissible: false,
               );
@@ -123,10 +124,10 @@ Get.dialog(
                 );
               } catch (e) {
                 print('❌ Exception en delete: $e');
-                
+
                 // Cerrar loading
                 Get.back();
-                
+
                 // Mostrar error
                 Get.snackbar(
                   'Error',
@@ -147,18 +148,22 @@ Get.dialog(
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(12),
@@ -166,7 +171,7 @@ Get.dialog(
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: isDark ? Colors.white12 : Colors.grey[200],
             borderRadius: BorderRadius.circular(8),
           ),
           child: ingredient.imageUrl != null
@@ -182,10 +187,11 @@ Get.dialog(
               : const Icon(Icons.fastfood, color: Colors.grey, size: 30),
         ),
         title: Text(
-          ingredient.displayName,  
-          style: const TextStyle(
+          ingredient.displayName,
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
         subtitle: Column(
@@ -193,9 +199,9 @@ Get.dialog(
           children: [
             const SizedBox(height: 4),
             Text(
-              '${ingredient.displayQuantity} • ${ingredient.category}',
-              style: const TextStyle(
-                color: Colors.grey,
+              '${ingredient.displayQuantity} - ${ingredient.category}',
+              style: TextStyle(
+                color: isDark ? Colors.grey.shade400 : Colors.grey,
                 fontSize: 13,
               ),
             ),
@@ -218,10 +224,7 @@ Get.dialog(
           ),
           child: const Text(
             'Editar',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ),
       ),

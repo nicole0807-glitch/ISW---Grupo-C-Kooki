@@ -9,9 +9,7 @@ class RecipeService {
   final _supabase = Supabase.instance.client;
 
   String _buildPostgrestError(PostgrestException e) {
-    final parts = <String>[
-      e.message
-    ];
+    final parts = <String>[e.message];
     return parts.join(' | ');
   }
 
@@ -26,16 +24,23 @@ class RecipeService {
           .select()
           .order('created_at', ascending: false);
 
-      return (response as List).map((data) => UserRecipe.fromMap(data)).toList();
+      return (response as List)
+          .map((data) => UserRecipe.fromMap(data))
+          .toList();
     } catch (e) {
       print('Error fetching community: $e');
       return [];
     }
   }
 
-  Future<String?> uploadRecipeImage(Uint8List imageBytes, String fileName) async {
+  Future<String?> uploadRecipeImage(
+    Uint8List imageBytes,
+    String fileName,
+  ) async {
     try {
-      await _supabase.storage.from('recipe_images').uploadBinary(
+      await _supabase.storage
+          .from('recipe_images')
+          .uploadBinary(
             fileName,
             imageBytes,
             fileOptions: const FileOptions(
@@ -47,6 +52,11 @@ class RecipeService {
       return _supabase.storage.from('recipe_images').getPublicUrl(fileName);
     } catch (e) {
       print('Error uploading image: $e');
+      if (e.toString().contains('Bucket not found')) {
+        print(
+          '❌ [ERROR]: El bucket "recipe_images" no existe en Supabase Storage.',
+        );
+      }
       return null;
     }
   }
@@ -60,16 +70,16 @@ class RecipeService {
       'duration': recipe.duration,
       'cost': recipe.cost,
       'difficulty': recipe.difficulty,
-      'instructions': recipe.instructions,
       'ingredients': recipe.ingredients,
       'steps': recipe.steps,
       'nutrition': recipe.nutrition,
       'preference': '',
-      'avg_rating': 0.0,
+      'avg_rating': recipe.dbAvgRating ?? 0.0,
     };
 
     final payload = Map<String, dynamic>.from(recipeData);
-    const missingColumnRegex = r'column "([^"]+)" of relation "user_recipes" does not exist';
+    const missingColumnRegex =
+        r'column "([^"]+)" of relation "user_recipes" does not exist';
 
     for (var attempt = 0; attempt < 8; attempt++) {
       try {
@@ -86,15 +96,18 @@ class RecipeService {
         }
 
         final pgError = _buildPostgrestError(e);
-        print('Error saving recipe (postgrest): $pgError');
+        print('❌ Error saving recipe (postgrest): $pgError');
+        print('Detaills: ${e.details} | Hint: ${e.hint}');
         throw Exception('No se pudo guardar la receta: $pgError');
       } catch (e) {
-        print('Error saving recipe: $e');
+        print('❌ Error fatal saving recipe: $e');
         throw Exception('No se pudo guardar la receta: $e');
       }
     }
 
-    throw Exception('No se pudo guardar la receta: esquema incompatible de user_recipes');
+    throw Exception(
+      'No se pudo guardar la receta: esquema incompatible de user_recipes',
+    );
   }
 
   Future<void> addCommunityRating(String recipeId, int score) async {
@@ -175,8 +188,11 @@ class RecipeService {
         'is_validated': false,
       };
 
-      final newRecipeRes =
-          await _supabase.from('Recipes').insert(recipeData).select('id').single();
+      final newRecipeRes = await _supabase
+          .from('Recipes')
+          .insert(recipeData)
+          .select('id')
+          .single();
 
       final int newRecipeId = newRecipeRes['id'];
       await _insertRelations(newRecipeId, recipe);
@@ -200,7 +216,10 @@ class RecipeService {
           })
           .eq('id', recipe.id);
 
-      await _supabase.from('Recipe_Ingredients').delete().eq('recipe_id', recipe.id);
+      await _supabase
+          .from('Recipe_Ingredients')
+          .delete()
+          .eq('recipe_id', recipe.id);
       await _supabase.from('Recipe_Steps').delete().eq('recipe_id', recipe.id);
       await _supabase.from('Recipe_Tags').delete().eq('recipe_id', recipe.id);
 
@@ -231,14 +250,18 @@ class RecipeService {
     }
 
     if (recipe.tagIds.isNotEmpty) {
-      final tagsData =
-          recipe.tagIds.map((tagId) => {'recipe_id': recipeId, 'tag_id': tagId}).toList();
+      final tagsData = recipe.tagIds
+          .map((tagId) => {'recipe_id': recipeId, 'tag_id': tagId})
+          .toList();
       await _supabase.from('Recipe_Tags').insert(tagsData);
     }
 
     for (var ing in recipe.ingredients) {
-      final existingIng =
-          await _supabase.from('Ingredient').select('ingredient_id').ilike('name', ing.name).maybeSingle();
+      final existingIng = await _supabase
+          .from('Ingredient')
+          .select('ingredient_id')
+          .ilike('name', ing.name)
+          .maybeSingle();
 
       int ingredientId;
       if (existingIng != null) {

@@ -14,8 +14,9 @@ import '../recipe/validation_queue_screen.dart';
 import '../recipe/publish_recipe_screen.dart';
 import '../recipe/user_recipe_detail_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
+import 'main_layout.dart';
 
-enum HomeRecipeFilter { all, topRated, quickBites, favorites }
+enum HomeRecipeFilter { all, topRated, quickBites, favorites, easy, fast }
 
 class HomeScreenContent extends StatefulWidget {
   const HomeScreenContent({super.key});
@@ -27,42 +28,103 @@ class HomeScreenContent extends StatefulWidget {
 class _HomeScreenContentState extends State<HomeScreenContent> {
   final RecipeService _recipeService = RecipeService();
 
-  String _query = '';
   HomeRecipeFilter _selectedFilter = HomeRecipeFilter.all;
 
-  List<Recipe> _applyFilters(List<Recipe> recipes, FavoritesController favorites) {
+  List<Recipe> _applyFilters(
+    List<Recipe> recipes,
+    FavoritesController favorites,
+  ) {
     return recipes.where((recipe) {
-      final queryMatch =
-          _query.isEmpty ||
-          recipe.title.toLowerCase().contains(_query) ||
-          recipe.ingredients.any((i) => i.name.toLowerCase().contains(_query));
-
-      if (!queryMatch) {
-        return false;
-      }
-
       switch (_selectedFilter) {
         case HomeRecipeFilter.all:
           return true;
         case HomeRecipeFilter.topRated:
-          return recipe.rating >= 4.5;
+          return recipe.rating >= 4.0;
         case HomeRecipeFilter.quickBites:
           return recipe.tagIds.contains(22);
         case HomeRecipeFilter.favorites:
           return favorites.isFavorite(recipe.id);
+        case HomeRecipeFilter.easy:
+          return (recipe.difficulty?.toLowerCase() ?? '') == 'fácil' ||
+              (recipe.difficulty?.toLowerCase() ?? '') == 'facil' ||
+              (recipe.difficulty?.toLowerCase() ?? '') == 'easy';
+        case HomeRecipeFilter.fast:
+          // Quick recipes: cooking time mentions <= 20 minutes
+          final t = (recipe.cookingTime?.toLowerCase() ?? '');
+          final mins = int.tryParse(t.replaceAll(RegExp(r'[^0-9]'), '')) ?? 999;
+          return mins <= 20;
       }
     }).toList();
   }
 
-  Widget _filterChip(String label, HomeRecipeFilter filter) {
+  Widget _filterChip(
+    String label,
+    HomeRecipeFilter filter,
+    BuildContext context, {
+    IconData? icon,
+  }) {
     final selected = _selectedFilter == filter;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      selectedColor: AppColors.nutveSelectionGreen.withOpacity(0.25),
-      checkmarkColor: AppColors.nutveDarkGreen,
-      onSelected: (_) => setState(() => _selectedFilter = filter),
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFilter = filter),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF52B788)
+              : isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: selected
+                  ? const Color(0xFF52B788).withOpacity(0.35)
+                  : Colors.black.withOpacity(0.04),
+              blurRadius: selected ? 8 : 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF52B788)
+                : isDark
+                ? Colors.white.withOpacity(0.12)
+                : Colors.grey.shade100,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: selected
+                    ? Colors.white
+                    : isDark
+                    ? Colors.white70
+                    : Colors.grey.shade500,
+              ),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : isDark
+                    ? Colors.white.withOpacity(0.8)
+                    : Colors.grey.shade600,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                fontSize: 12.5,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -70,15 +132,21 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   Widget build(BuildContext context) {
     final homeController = context.watch<HomeController>();
     final favorites = context.watch<FavoritesController>();
-    final canValidate = homeController.hasPermission(AppPermission.validateRecipes);
-    final canOpenAdmin = homeController.hasPermission(AppPermission.openAdminDashboard);
-    final canModerateCommunity =
-        homeController.hasPermission(AppPermission.moderateCommunityRecipes);
-    final canPublishCommunity =
-        homeController.hasPermission(AppPermission.publishCommunityRecipe);
+    final canValidate = homeController.hasPermission(
+      AppPermission.validateRecipes,
+    );
+    final canOpenAdmin = homeController.hasPermission(
+      AppPermission.openAdminDashboard,
+    );
+    final canModerateCommunity = homeController.hasPermission(
+      AppPermission.moderateCommunityRecipes,
+    );
+    final canPublishCommunity = homeController.hasPermission(
+      AppPermission.publishCommunityRecipe,
+    );
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         color: AppColors.nutveDarkGreen,
         onRefresh: () async => setState(() {}),
@@ -89,38 +157,81 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             children: [
               _buildHeroBanner(),
               const SizedBox(height: 20),
-              if (canValidate) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(
+              // Eliminado el botón duplicado de Cola de Validación
+              const SizedBox(height: 20),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    _filterChip(
+                      '✨ Todas',
+                      HomeRecipeFilter.all,
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const ValidationQueueScreen(),
-                      ),
+                      icon: null,
                     ),
-                    icon: const Icon(Icons.fact_check),
-                    label: const Text('Cola de validación'),
-                  ),
+                    const SizedBox(width: 8),
+                    _filterChip(
+                      '⭐ Top Rated',
+                      HomeRecipeFilter.topRated,
+                      context,
+                    ),
+                    const SizedBox(width: 8),
+                    _filterChip(
+                      '🥪 Snacks',
+                      HomeRecipeFilter.quickBites,
+                      context,
+                    ),
+                    const SizedBox(width: 8),
+                    _filterChip(
+                      '❤️ Favoritos',
+                      HomeRecipeFilter.favorites,
+                      context,
+                    ),
+                    const SizedBox(width: 8),
+                    _filterChip('🟢 Fáciles', HomeRecipeFilter.easy, context),
+                    const SizedBox(width: 8),
+                    _filterChip('⚡ Rápidas', HomeRecipeFilter.fast, context),
+                  ],
                 ),
-                const SizedBox(height: 12),
-              ],
-              if (canOpenAdmin) ...[
-                _buildAdminPanelButton(context),
+              ),
+              const SizedBox(height: 25),
+              if (canValidate || canOpenAdmin) ...[
+                Row(
+                  children: [
+                    if (canValidate)
+                      Expanded(
+                        child: _buildActionButton(
+                          'Validar',
+                          Icons.fact_check_rounded,
+                          Colors.blueAccent,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ValidationQueueScreen(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (canValidate && canOpenAdmin) const SizedBox(width: 12),
+                    if (canOpenAdmin)
+                      Expanded(
+                        child: _buildActionButton(
+                          'Admin',
+                          Icons.psychology_rounded,
+                          Colors.amber,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AdminDashboardScreen(),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 20),
               ],
-              _buildSearchBar(),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _filterChip('Todas', HomeRecipeFilter.all),
-                  _filterChip('Más valoradas', HomeRecipeFilter.topRated),
-                  _filterChip('Snacks rápidos', HomeRecipeFilter.quickBites),
-                  _filterChip('Favoritas', HomeRecipeFilter.favorites),
-                ],
-              ),
               const SizedBox(height: 25),
               FutureBuilder<List<Recipe>>(
                 future: _recipeService.fetchRecipes(),
@@ -158,8 +269,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                     );
                   }
 
-                  final quickBitesFiltered =
-                      filteredRecipes.where((r) => r.tagIds.contains(22)).toList();
+                  final quickBitesFiltered = filteredRecipes
+                      .where((r) => r.tagIds.contains(22))
+                      .toList();
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +299,14 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                 future: _recipeService.fetchCommunityRecipes(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(30.0),
+                        child: CircularProgressIndicator(
+                          color: AppColors.nutveSelectionGreen,
+                        ),
+                      ),
+                    );
                   }
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return _buildEmptyCommunity();
@@ -195,9 +314,11 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
                   final communityRecipes = snapshot.data!;
                   return SizedBox(
-                    height: 300,
+                    height: 320, // Ajustado para evitar recortes de sombra
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      clipBehavior: Clip.none, // IMPORTANTE
                       padding: const EdgeInsets.only(left: 5, bottom: 20),
                       itemCount: communityRecipes.length,
                       itemBuilder: (context, index) => _buildUserRecipeCard(
@@ -217,7 +338,15 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     );
   }
 
-  Widget _buildUserRecipeCard(BuildContext context, UserRecipe recipe, bool isAdmin) {
+  Widget _buildUserRecipeCard(
+    BuildContext context,
+    UserRecipe recipe,
+    bool isAdmin,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? Theme.of(context).cardColor : Colors.white;
+    final subtitleColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+
     return Stack(
       children: [
         GestureDetector(
@@ -228,14 +357,14 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ),
           ),
           child: Container(
-            width: 230,
-            margin: const EdgeInsets.only(right: 20),
+            width: 250,
+            margin: const EdgeInsets.only(right: 15, bottom: 15, top: 5),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              color: cardBg,
+              borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),
@@ -243,59 +372,164 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.network(
-                    recipe.imageUrl,
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 140,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.broken_image),
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(30),
+                      ),
+                      child: Image.network(
+                        recipe.imageUrl,
+                        height: 150, // Reduced from 180
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 150,
+                          color: isDark ? Colors.grey[800] : Colors.grey[100],
+                          child: Icon(
+                            Icons.broken_image_rounded,
+                            color: isDark ? Colors.white38 : Colors.grey,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (recipe.avgRating >= 4.5)
+                      Positioned(
+                        bottom: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.nutveDarkGreen.withOpacity(0.85),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.1),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                color: Colors.amber,
+                                size: 12,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                "COMUNIDAD",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         recipe.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16, // Reduced from 18
+                          fontWeight: FontWeight.w800,
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1B4332),
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.person, size: 14, color: AppColors.nutveDarkGreen),
+                          Icon(
+                            Icons.person,
+                            size: 13,
+                            color: isDark
+                                ? AppColors.nutveSelectionGreen
+                                : AppColors.nutveDarkGreen,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               recipe.userName,
-                              style: const TextStyle(
-                                color: AppColors.nutveDarkGreen,
+                              style: TextStyle(
+                                color: subtitleColor,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 12), // Reduced spacing
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildSmallTag(Icons.access_time_filled, recipe.duration),
-                          _buildSmallTag(
-                            Icons.star_rounded,
-                            recipe.avgRating.toStringAsFixed(1),
-                            color: Colors.orange,
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 14,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            recipe.duration.isNotEmpty
+                                ? recipe.duration
+                                : "-- min",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF52B788).withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  color: Colors.amber,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  recipe.avgRating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Color(0xFF52B788),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -319,7 +553,11 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
                 ),
-                child: const Icon(Icons.delete_sweep, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.delete_sweep,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ),
@@ -354,28 +592,36 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     );
   }
 
-  Widget _buildAdminPanelButton(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        gradient: const LinearGradient(colors: [Colors.black, Colors.black87]),
-      ),
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 15),
+  Widget _buildActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.2)),
         ),
-        icon: const Icon(Icons.psychology, color: Colors.amber),
-        label: const Text(
-          'Panel de Administrador',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -384,65 +630,141 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   Widget _buildHeroBanner() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        color: AppColors.nutveDarkGreen,
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Desbloquea tu \nPotencial',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 15),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.nutveDarkGreen,
-            ),
-            onPressed: () {},
-            child: const Text(
-              'MEJORAR PLAN',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: AppColors.nutveSelectionGreen.withOpacity(0.3),
+            blurRadius: 25,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      child: TextField(
-        onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
-        decoration: InputDecoration(
-          hintText: 'Buscar receta...',
-          prefixIcon: const Icon(Icons.search, color: AppColors.nutveDarkGreen),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none,
-          ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Stack(
+          children: [
+            // Background Gradient
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.nutveSelectionGreen,
+                      AppColors.nutveDarkGreen.withOpacity(0.9),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
+            // Decorative shapes
+            Positioned(
+              right: -50,
+              top: -50,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          "NUEVO",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Desbloquea tu\nMejor Versión',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Planes personalizados y recetas únicas.',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.nutveDarkGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 15,
+                      ),
+                    ),
+                    onPressed: () {
+                      final mainState = context
+                          .findAncestorStateOfType<MainLayoutState>();
+                      if (mainState != null) {
+                        mainState.navigateToPlan();
+                      }
+                    },
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'MEJORAR MI PLAN',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward_rounded, size: 18),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  // Search bar removed - available in dedicated Search tab
 
   Widget _buildSectionHeader(String title) {
     return Row(
@@ -465,14 +787,12 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
   Widget _buildHorizontalList(List<Recipe> recipes) {
     return SizedBox(
-      height: 310,
+      height: 360, // Aumentado para evitar overflows (antes era 310)
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none, // IMPORTANTE para sombras y evitar recortes
         itemCount: recipes.length,
-        itemBuilder: (context, index) => Padding(
-          padding: const EdgeInsets.only(right: 15),
-          child: RecipeCard(recipe: recipes[index]),
-        ),
+        itemBuilder: (context, index) => RecipeCard(recipe: recipes[index]),
       ),
     );
   }
@@ -494,18 +814,30 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Comunidad kooki',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Inspírate con otros usuarios',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-          ],
+        Builder(
+          builder: (ctx) {
+            final isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Comunidad kooki',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkCtx ? Colors.white : null,
+                  ),
+                ),
+                Text(
+                  'La mejor inspiración para cocinar',
+                  style: TextStyle(
+                    color: isDarkCtx ? Colors.white54 : Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         if (canPublishCommunity)
           IconButton(
@@ -520,12 +852,19 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ),
           )
         else
-          const SizedBox(width: 30),
+          // Ocupamos el espacio para mantener el alineado si es necesario,
+          // o simplemente no mostramos nada.
+          const SizedBox(width: 40),
       ],
     );
   }
 
-  Widget _buildSmallTag(IconData icon, String text, {Color color = Colors.grey}) {
+  Widget _buildSmallTag(
+    IconData icon,
+    String text, {
+    Color color = Colors.grey,
+    bool isDark = false,
+  }) {
     return Row(
       children: [
         Icon(icon, size: 14, color: color),
@@ -534,7 +873,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           text,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[700],
+            color: isDark ? Colors.white60 : Colors.grey[700],
             fontWeight: FontWeight.bold,
           ),
         ),

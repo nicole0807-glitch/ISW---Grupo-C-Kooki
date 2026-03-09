@@ -101,7 +101,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _userDataFuture,
         builder: (context, snapshot) {
-
           //Mientras carga
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -115,12 +114,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 children: [
                   const Icon(Icons.error_outline, size: 60, color: Colors.red),
                   const SizedBox(height: 10),
-                  const Text("Error cargando los datos de usuario. Intente más tarde."),
+                  const Text(
+                    "Error cargando los datos de usuario. Intente más tarde.",
+                  ),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text("Volver al Perfil"),
-                  )
+                  ),
                 ],
               ),
             );
@@ -131,12 +132,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           _selectedRoleId ??= data?['role_id'] as int?;
 
           //Se verifica que data no sea null
-          final userName = (data != null && data['username'] != null) 
-            ? data['username'] 
-            : "Usuario";
-          
+          final userName = (data != null && data['username'] != null)
+              ? data['username']
+              : "Usuario";
+
           final avatarURL = (data != null) ? data['avatar_url'] : null;
-      
+
           // email obtenido de auth
           final email = _profileService.currentUser?.email ?? 'Sin email';
 
@@ -157,17 +158,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               ],
             ),
           );
-
-        }
-      )
-
+        },
+      ),
     );
   }
 
   Widget _buildRoleSection() {
-    final dropdownValue = _roles
-            .where((r) => r['role_id'] == _selectedRoleId)
-            .isNotEmpty
+    final dropdownValue =
+        _roles.where((r) => r['role_id'] == _selectedRoleId).isNotEmpty
         ? _selectedRoleId
         : null;
 
@@ -189,7 +187,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               const Center(child: CircularProgressIndicator())
             else
               DropdownButtonFormField<int>(
-                value: dropdownValue,
+                initialValue: dropdownValue,
                 decoration: const InputDecoration(
                   labelText: "Seleccionar rol",
                   border: OutlineInputBorder(),
@@ -247,10 +245,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   radius: 35,
                   backgroundColor: Colors.grey.shade200,
                   backgroundImage: (avatarURL != null && avatarURL.isNotEmpty)
-                  ? NetworkImage(avatarURL) : null,
+                      ? NetworkImage(avatarURL)
+                      : null,
                   child: (avatarURL == null || avatarURL.isEmpty)
-                  ? const Icon(Icons.person, size: 35, color: Colors.grey) : null,
-
+                      ? const Icon(Icons.person, size: 35, color: Colors.grey)
+                      : null,
                 ),
                 //Botón de editar foto
                 Positioned(
@@ -262,9 +261,13 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                       color: Color.fromARGB(255, 19, 236, 91),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 12,
+                      color: Colors.white,
+                    ),
                   ),
-                )
+                ),
               ],
             ),
             const SizedBox(width: 20),
@@ -283,11 +286,16 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     children: [
                       Text(
                         username,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.edit, color: Color.fromARGB(255, 19, 236, 91),),
+                        icon: const Icon(
+                          Icons.edit,
+                          color: Color.fromARGB(255, 19, 236, 91),
+                        ),
                         onPressed: () {
                           _showEditDialog(
                             title: "Editar Nombre",
@@ -295,18 +303,18 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                             onSave: (newValue) async {
                               await _profileService.updateUsername(newValue);
                               _refreshData();
-                            }
+                            },
                           );
                         },
-                      )
+                      ),
                     ],
-                  )
+                  ),
                 ],
-              )
-            )
+              ),
+            ),
           ],
         ),
-      )
+      ),
     );
   }
 
@@ -318,13 +326,15 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       child: Column(
         children: [
           // Email
-
           ListTile(
             leading: const Icon(Icons.email_outlined),
             title: const Text("Correo Electrónico"),
             subtitle: Text(email),
             trailing: IconButton(
-              icon: const Icon(Icons.edit, color: Color.fromARGB(255, 19, 236, 91)),
+              icon: const Icon(
+                Icons.edit,
+                color: Color.fromARGB(255, 19, 236, 91),
+              ),
               onPressed: () {
                 _showEditDialog(
                   title: "Editar Correo",
@@ -346,19 +356,22 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             title: const Text("Contraseña"),
             subtitle: const Text("••••••••••"),
             trailing: IconButton(
-              icon: const Icon(Icons.edit, color: Color.fromARGB(255, 19, 236, 91)),
+              icon: const Icon(
+                Icons.edit,
+                color: Color.fromARGB(255, 19, 236, 91),
+              ),
               onPressed: () {
                 _showPasswordDialog();
               },
             ),
-          )
+          ),
         ],
-      )
+      ),
     );
   }
 
   // DIALOG GENÉRICO
-  Future <void> _showEditDialog({
+  Future<void> _showEditDialog({
     required String title,
     required String currentValue,
     required Function(String) onSave,
@@ -390,9 +403,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               );
             },
             child: const Text("Guardar"),
-          )
+          ),
         ],
-      )
+      ),
     );
   }
 
@@ -458,76 +471,93 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 TextButton(
                   onPressed: isVerifying ? null : () => Navigator.pop(context),
                   //Botón de cancelar
-                  child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
                 //Botón para realizar cambios
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(shape: StadiumBorder()),
-                  onPressed: isVerifying ? null : () async {
+                  onPressed: isVerifying
+                      ? null
+                      : () async {
+                          //Contraseña actual vacía
+                          if (currentPassController.text.isEmpty) {
+                            setDialogState(
+                              () => errorText = "Ingresa tu contraseña actual",
+                            );
+                          }
 
-                    //Contraseña actual vacía
-                    if (currentPassController.text.isEmpty) {
-                      setDialogState(() => errorText = "Ingresa tu contraseña actual");
-                    }
+                          //La contraseña nueva y la confirmación no coinciden
+                          if (passController.text != confirmController.text) {
+                            setDialogState(() {
+                              errorText =
+                                  "La confirmación no coincide con la contraseña nueva. Intentelo de nuevo.";
+                            });
+                            return;
+                          }
 
-                    //La contraseña nueva y la confirmación no coinciden
-                    if (passController.text != confirmController.text) {
-                      setDialogState(() {
-                        errorText = "La confirmación no coincide con la contraseña nueva. Intentelo de nuevo.";
-                      });
-                      return;
-                    }
+                          //Longitud mínima para la contraseña nueva
+                          if (passController.text.length < 6) {
+                            setDialogState(() {
+                              errorText = "Utilice mínimo 8 caracteres";
+                            });
+                            return;
+                          }
 
-                    //Longitud mínima para la contraseña nueva
-                    if (passController.text.length < 6) {
-                      setDialogState(() {
-                        errorText = "Utilice mínimo 8 caracteres";
-                      });
-                      return;
-                    }
+                          //Verificación de contraseña actual
+                          setDialogState(() {
+                            isVerifying = true;
+                            errorText = null;
+                          });
 
-                    //Verificación de contraseña actual
-                    setDialogState(() {
-                      isVerifying = true;
-                      errorText = null;
-                    });
+                          bool isCurrentCorrect = await _profileService
+                              .validateCurrentPassword(
+                                currentPassController.text,
+                              );
 
-                    bool isCurrentCorrect = await _profileService.validateCurrentPassword(currentPassController.text);
+                          if (!isCurrentCorrect) {
+                            setDialogState(() {
+                              isVerifying = false;
+                              errorText = "La contraseña actual es incorrecta";
+                            });
+                            return;
+                          }
 
-                    if (!isCurrentCorrect) {
-                      setDialogState(() {
-                        isVerifying = false;
-                        errorText = "La contraseña actual es incorrecta";
-                      });
-                      return;
-                    }
+                          //CAMBIO DE CONTRASEÑA
+                          await _profileService.updateAuthPass(
+                            passController.text,
+                          );
 
-                    //CAMBIO DE CONTRASEÑA
-                    await _profileService.updateAuthPass(passController.text);
-
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Contraseña actualizada exitosamente"),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-
-                  },
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Contraseña actualizada exitosamente",
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
                   child: isVerifying
-                  ? const SizedBox(width: 20, height: 20, child:
-                  CircularProgressIndicator(strokeWidth: 2, color: Colors.white,))
-                  : const Text("Guardar"),
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text("Guardar"),
                 ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
   }
-
 }

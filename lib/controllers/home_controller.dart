@@ -24,9 +24,9 @@ enum AppPermission {
 
 class HomeController extends ChangeNotifier {
   final SupabaseService _supabaseService = SupabaseService();
-  
+
   // Ahora manejamos el ID del rol directamente
-  int _roleId = 0; 
+  int _roleId = 0;
   String? _roleName;
   bool isLoading = true;
 
@@ -98,6 +98,11 @@ class HomeController extends ChangeNotifier {
         }.contains(permission);
       case AppRole.guest:
       case AppRole.unknown:
+        // Permitimos publicar incluso si el rol es desconocido pero hay sesión (se maneja en loadUserRole)
+        if (permission == AppPermission.publishCommunityRecipe &&
+            _supabaseService.currentUser != null) {
+          return true;
+        }
         return permission == AppPermission.viewRecipes;
     }
   }
@@ -108,7 +113,7 @@ class HomeController extends ChangeNotifier {
 
   Future<void> loadUserRole() async {
     final user = _supabaseService.currentUser;
-    
+
     if (user == null) {
       _roleId = 0;
       _roleName = null;
@@ -140,8 +145,10 @@ class HomeController extends ChangeNotifier {
       print("🔄 Rol cargado: $_roleId");
     } catch (e) {
       print("❌ Error cargando rol: $e");
-      _roleId = 1; // Por defecto rol básico si falla
-      _roleName = null;
+      // Si hay un usuario autenticado pero falla la carga del perfil,
+      // asignamos rol de usuario por defecto para que no se quede bloqueado.
+      _roleId = 1;
+      _roleName = 'user';
     } finally {
       isLoading = false;
       notifyListeners();
