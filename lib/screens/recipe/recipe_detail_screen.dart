@@ -7,6 +7,7 @@ import '../../models/recipe_model.dart';
 import 'package:get/get.dart';
 import '../../controllers/cooking_controller.dart';
 import '../../models/cooking_models.dart';
+import '../../shared/widgets/nutve_navigation_hint.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final Recipe recipe;
@@ -204,6 +205,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                   .addToShoppingList(toAdd);
                               if (success && mounted) {
                                 Navigator.pop(context);
+                                NutveNavigationHint.show(context);
                               }
                             },
                       child: _cookingController.isAddingToCart.value
