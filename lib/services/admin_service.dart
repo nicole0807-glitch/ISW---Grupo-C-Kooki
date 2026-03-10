@@ -8,24 +8,46 @@ class AdminService {
   // ==========================================
 
   /// Simula o dispara el entrenamiento del modelo de IA.
-  Future<void> trainAIModel() async {
+  /// Ahora recibe una lista de palabras clave (separadas por comitas) y una respuesta
+  Future<void> trainAIModelWithData(
+    String keywordsInput,
+    String responseText,
+  ) async {
     try {
-      // 1. Actualizamos el flag en la base de datos para que el motor de IA sepa que hay cambios
-      await _supabase
-          .from('ai_knowledge')
-          .update({
-            'is_pending_training': true,
-            'last_trained_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', 1); // Asumiendo fila de control con ID 1
+      // 1. Limpiamos y preparamos las palabras clave
+      final keywords = keywordsInput
+          .split(',')
+          .map((k) => k.trim().toLowerCase())
+          .where((k) => k.isNotEmpty)
+          .toList();
 
-      // 2. Simulamos el tiempo de procesamiento
-      await Future.delayed(const Duration(seconds: 3));
+      if (keywords.isEmpty || responseText.trim().isEmpty) {
+        throw Exception(
+          "Las palabras clave y la respuesta no pueden estar vacías.",
+        );
+      }
 
-      // 3. Enviamos notificación automática de éxito
+      // 2. Insertamos o actualizamos en ai_knowledge para cada palabra clave
+      for (String kw in keywords) {
+        await _supabase.from('ai_knowledge').upsert({
+          'keyword': kw,
+          'response': responseText.trim(),
+        });
+      }
+
+      // 3. Registramos el entrenamiento en la tabla de logs (ai_training)
+      await _supabase.from('ai_training').insert({
+        'status': 'completed',
+        'details':
+            'Entrenamiento manual: ${keywords.length} palabras clave actualizadas.',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      // 4. Enviamos notificación automática de éxito
       await sendGlobalNotification(
         title: "🤖 IA Actualizada",
-        content: "Kooki AI ha aprendido nuevas recetas y combinaciones.",
+        content:
+            "Kooki AI ha aprendido nuevas respuestas para: ${keywords.join(', ')}",
         type: 'ai_update',
       );
     } catch (e) {

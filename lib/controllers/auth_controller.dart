@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import '../services/supabase_service.dart';
 
 class AuthController {
@@ -11,10 +11,10 @@ class AuthController {
   Future<bool> logout() async {
     try {
       await _service.signOut();
-      return true; 
+      return true;
     } catch (e) {
       print(e);
-      return false; 
+      return false;
     }
   }
 
@@ -26,7 +26,7 @@ class AuthController {
     try {
       print('🔵 Intentando login...');
       print('👤 Username: $username');
-      
+
       // PASO 1: JOIN entre Profile y Role para obtener el nombre
       final profileResponse = await _service.supabase
           .from('Profile')
@@ -35,7 +35,7 @@ class AuthController {
             email, 
             role_id, 
             Role ( name )
-          ''') 
+          ''')
           .eq('username', username)
           .maybeSingle();
 
@@ -54,7 +54,7 @@ class AuthController {
         // Si Supabase lo devuelve como lista: [{name: admin}]
         if (rawRoleData is List && rawRoleData.isNotEmpty) {
           roleName = rawRoleData[0]['name']?.toString() ?? 'Sin nombre';
-        } 
+        }
         // Si lo devuelve como mapa: {name: admin}
         else if (rawRoleData is Map) {
           roleName = rawRoleData['name']?.toString() ?? 'Sin nombre';
@@ -84,39 +84,40 @@ class AuthController {
       rethrow;
     }
   }
- Future<bool> registerUser({
-  required String email,
-  required String password,
-  required String firstName,
-  required String lastName,
-  required String username,
-  File? imageFile,
-}) async {
-  try {
-    final authResponse = await _service.signUp(email, password);
-    final userId = authResponse.user?.id;
 
-    if (userId == null) throw Exception('No se pudo crear el usuario');
+  Future<bool> registerUser({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String username,
+    Uint8List? imageBytes,
+  }) async {
+    try {
+      final authResponse = await _service.signUp(email, password);
+      final userId = authResponse.user?.id;
 
-    // Inicializamos como null explícitamente
-    String? avatarUrl; 
-    
-    if (imageFile != null) {
-      avatarUrl = await _service.uploadAvatar(userId, imageFile);
+      if (userId == null) throw Exception('No se pudo crear el usuario');
+
+      // Inicializamos como null explícitamente
+      String? avatarUrl;
+
+      if (imageBytes != null) {
+        avatarUrl = await _service.uploadAvatar(userId, imageBytes);
+      }
+
+      await _service.supabase.from('Profile').insert({
+        'user_id': userId,
+        'username': username,
+        'email': email,
+        'role_id': 1,
+        'status': true,
+        'avatar_url': avatarUrl, // Enviará null si no hay imagen
+      });
+
+      return true;
+    } catch (e) {
+      rethrow;
     }
-
-    await _service.supabase.from('Profile').insert({
-      'user_id': userId,
-      'username': username,
-      'email': email,
-      'role_id': 1, 
-      'status': true,
-      'avatar_url': avatarUrl, // Enviará null si no hay imagen
-    });
-
-    return true;
-  } catch (e) {
-    rethrow;
   }
-}
 }

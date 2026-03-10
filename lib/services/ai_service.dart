@@ -23,6 +23,30 @@ class AiService {
 
   // Guardar palabra no reconocida
   Future<void> saveUnrecognized(String input) async {
-    await _supabase.from('ai_training').insert({'unrecognized_input': input});
+    try {
+      await _supabase.from('ai_training').insert({'unrecognized_input': input});
+    } catch (e) {
+      print('Error saving unrecognized input: $e');
+    }
+  }
+
+  // Buscar respuesta por palabra clave
+  Future<String?> getResponseFor(String input) async {
+    final normalizedInput = input.toLowerCase().trim();
+    final knowledge = await fetchKnowledge();
+
+    // Intento de coincidencia exacta
+    if (knowledge.containsKey(normalizedInput)) {
+      return knowledge[normalizedInput];
+    }
+
+    // Intento de coincidencia parcial
+    for (var entry in knowledge.entries) {
+      if (normalizedInput.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+
+    return null;
   }
 }

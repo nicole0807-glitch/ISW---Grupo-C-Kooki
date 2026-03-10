@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../utils/app_colors.dart';
 import '../../controllers/pantry_controller.dart';
 import '../../controllers/shopping_controller.dart';
 import 'add_ingredient_screen.dart';
@@ -28,30 +29,30 @@ class _PantryScreenState extends State<PantryScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Recargar ítems del carrito cada vez que la pantalla aparezca
-    // para que el badge siempre esté actualizado
     shoppingController.loadCartItems();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         title: Row(
           children: [
-            const Text(
+            Text(
               'Gestión de despensa',
               style: TextStyle(
-                color: Colors.black,
+                color: isDark ? Colors.white : Colors.black,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const Spacer(),
-            // Botón de carrito animado (negro con blanco)
+            // Botón de carrito animado con badge
             Obx(() => _buildCartButton()),
             const SizedBox(width: 4),
             // Botón de papelera
@@ -68,20 +69,42 @@ class _PantryScreenState extends State<PantryScreen> {
         children: [
           // Search Bar
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: TextField(
-              onChanged: controller.setSearchQuery,
-              decoration: InputDecoration(
-                hintText: 'Buscar ingredientes...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                filled: true,
-                fillColor: const Color(0xFFF5F5F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+            color: Theme.of(context).scaffoldBackgroundColor,
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: isDark
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+              ),
+              child: TextField(
+                onChanged: controller.setSearchQuery,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                decoration: InputDecoration(
+                  hintText: 'Buscar ingredientes...',
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.nutveSelectionGreen,
+                  ),
+                  filled: true,
+                  fillColor: isDark
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
@@ -97,7 +120,11 @@ class _PantryScreenState extends State<PantryScreen> {
                 children: [
                   Text(
                     'Mostrando ${controller.filteredIngredients.length} de ${controller.totalItems} ingredientes',
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -122,7 +149,7 @@ class _PantryScreenState extends State<PantryScreen> {
                         Icon(
                           Icons.inventory_2_outlined,
                           size: 80,
-                          color: Colors.grey[300],
+                          color: isDark ? Colors.white24 : Colors.grey[300],
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -131,7 +158,7 @@ class _PantryScreenState extends State<PantryScreen> {
                               : 'Tu despensa está vacía',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: isDark ? Colors.white70 : Colors.grey[600],
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -141,7 +168,7 @@ class _PantryScreenState extends State<PantryScreen> {
                               : 'Agrega tu primer ingrediente',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey[400],
+                            color: isDark ? Colors.white54 : Colors.grey[400],
                           ),
                         ),
                       ],
@@ -166,13 +193,9 @@ class _PantryScreenState extends State<PantryScreen> {
         ],
       ),
 
-      // Floating Action Button - CAMBIO AQUÍ
-      floatingActionButton: FloatingActionButton(
+      // Floating Action Button - Premium
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Opción 1: Con GetX
-          // Get.to(() => const AddIngredientScreen());
-
-          // Opción 2: Con Navigator (descomenta si GetX no funciona)
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -180,19 +203,27 @@ class _PantryScreenState extends State<PantryScreen> {
             ),
           );
         },
-        backgroundColor: const Color(0xFF4CAF50),
-        child: const Icon(Icons.add, size: 32),
+        backgroundColor: AppColors.nutveSelectionGreen,
+        elevation: 4,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          "AGREGAR",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
       ),
     );
   }
 
-  /// Botón de carrito con badge de cantidad, fondo negro e icono blanco.
+  /// Botón de carrito con badge de cantidad.
   Widget _buildCartButton() {
     final count = shoppingController.cartCount;
 
     return GestureDetector(
       onTap: () {
-        // Recargar ítems antes de abrir el carrito
         shoppingController.loadCartItems();
         Navigator.push(
           context,

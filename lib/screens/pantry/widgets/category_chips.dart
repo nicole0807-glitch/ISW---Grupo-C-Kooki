@@ -7,8 +7,12 @@ class CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final chipBg = isDark ? Colors.white.withOpacity(0.07) : Colors.white;
+
     return Container(
-      color: Colors.white,
+      color: bgColor,
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: SizedBox(
         height: 40,
@@ -30,17 +34,19 @@ class CategoryChips extends StatelessWidget {
                     controller.setCategory(category);
                   }
                 },
-                backgroundColor: Colors.white,
+                backgroundColor: chipBg,
                 selectedColor: const Color(0xFF4CAF50),
                 labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black,
+                  color: isSelected
+                      ? Colors.white
+                      : (isDark ? Colors.white70 : Colors.black),
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
                 ),
                 side: BorderSide(
                   color: isSelected
                       ? const Color(0xFF4CAF50)
-                      : Colors.grey[300]!,
+                      : (isDark ? Colors.white24 : Colors.grey[300]!),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               );
