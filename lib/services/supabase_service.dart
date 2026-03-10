@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
@@ -14,7 +14,7 @@ class SupabaseService {
 
   Future<bool> isUserAdmin() async {
     final user = _client.auth.currentUser;
-    
+
     // 1. Si no hay usuario, no es admin
     if (user == null) {
       print("🔍 [AdminCheck]: No hay usuario logueado.");
@@ -26,21 +26,22 @@ class SupabaseService {
       // Traemos el campo 'name' de la tabla 'Role'
       final response = await _client
           .from('Profile')
-          .select('role_id, Role!inner(name)') 
+          .select('role_id, Role!inner(name)')
           .eq('user_id', user.id)
           .maybeSingle();
 
       print("🔍 [AdminCheck] Respuesta BD: $response");
 
       if (response == null || response['Role'] == null) {
-        print("🔍 [AdminCheck]: No se encontró el perfil o el objeto Role es nulo.");
+        print(
+          "🔍 [AdminCheck]: No se encontró el perfil o el objeto Role es nulo.",
+        );
         return false;
       }
 
       // 3. Extracción robusta del nombre del rol
       final roleData = response['Role'];
       String? roleName;
-      
 
       if (roleData is Map) {
         roleName = roleData['name']?.toString();
@@ -51,23 +52,32 @@ class SupabaseService {
       print("🔍 [AdminCheck] Rol detectado: $roleName");
 
       // 4. Comparación (asegúrate que en tu BD sea 'admin')
-      return roleName?.toLowerCase().trim() == 'admin'; 
-      
+      return roleName?.toLowerCase().trim() == 'admin';
     } catch (e) {
       print("❌ [AdminCheck] Error fatal: $e");
       return false;
     }
   }
-  
 
-  Future<String> uploadAvatar(String userId, File imageFile) async {
-    final fileName = '$userId/profile.png';
-    await _client.storage.from('avatars').upload(
-          fileName,
-          imageFile,
-          fileOptions: const FileOptions(upsert: true),
+  Future<String> uploadAvatar(String userId, Uint8List bytes) async {
+    try {
+      final fileName = '$userId/profile.png';
+      await _client.storage
+          .from('avatars')
+          .uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+      return _client.storage.from('avatars').getPublicUrl(fileName);
+    } catch (e) {
+      if (e.toString().contains('Bucket not found')) {
+        throw Exception(
+          'ERROR: El bucket "avatars" no existe en Supabase Storage. Por favor, créalo como bucket público.',
         );
-    return _client.storage.from('avatars').getPublicUrl(fileName);
+      }
+      rethrow;
+    }
   }
 
   Future<void> signOut() async {
@@ -88,7 +98,7 @@ class SupabaseService {
         .select('tag_id')
         .eq('name', name)
         .maybeSingle();
-    
+
     if (existing != null) {
       return existing['tag_id'] as int;
     }
@@ -98,7 +108,7 @@ class SupabaseService {
         .insert({'name': name})
         .select('tag_id')
         .single();
-    
+
     return created['tag_id'] as int;
   }
 
@@ -122,12 +132,15 @@ class SupabaseService {
     return created['ingredient_id'] as int;
   }
 
-  Future<void> saveUserPreferences(String userId, List<String> preferences) async {
+  Future<void> saveUserPreferences(
+    String userId,
+    List<String> preferences,
+  ) async {
     for (String pref in preferences) {
       if (pref.isEmpty || pref == "None") continue;
-      
+
       final int tagId = await _getOrCreateTagId(pref);
-      
+
       await _client.from('User_preferences').upsert({
         'user_id': userId,
         'tag_id': tagId,

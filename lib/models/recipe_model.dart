@@ -11,6 +11,7 @@ class Recipe {
   final List<String> steps;
   final List<int> tagIds;
   final String status;
+  final String? cost;
   String? reviewerName;
 
   Recipe({
@@ -26,6 +27,7 @@ class Recipe {
     required this.steps,
     required this.tagIds,
     this.reviewerName,
+    this.cost,
     this.status = 'pending', // Valor por defecto
   });
 
@@ -53,6 +55,7 @@ class Recipe {
       tagIds: tags,
       cookingTime: map['cooking_time'],
       difficulty: map['difficulty'],
+      cost: map['cost'],
       rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
       nutrition: map['nutrition'] is Map ? map['nutrition'] : {},
       // --- MAPEO DEL NUEVO CAMPO DESDE SUPABASE ---

@@ -259,69 +259,6 @@ class GoalRegistrationScreen extends StatelessWidget {
     );
   }
 
-  List<PieChartSectionData> _generateChartSections(UserGoalModel goal) {
-    final total = goal.targetCalories;
-    final pCals = goal.targetProtein * 4;
-    final cCals = goal.targetCarbs * 4;
-    final fCals = goal.targetFat * 9;
-
-    return [
-      PieChartSectionData(
-        color: Colors.blue,
-        value: pCals,
-        title: '${(pCals / total * 100).toStringAsFixed(0)}%',
-        radius: 50,
-        titleStyle: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      PieChartSectionData(
-        color: Colors.orange,
-        value: cCals,
-        title: '${(cCals / total * 100).toStringAsFixed(0)}%',
-        radius: 50,
-        titleStyle: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      PieChartSectionData(
-        color: Colors.red,
-        value: fCals,
-        title: '${(fCals / total * 100).toStringAsFixed(0)}%',
-        radius: 50,
-        titleStyle: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ];
-  }
-
-  Widget _buildLegend(UserGoalModel goal) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _legendItem(
-          "Proteínas",
-          Colors.blue,
-          "${goal.targetProtein.toStringAsFixed(0)}g",
-        ),
-        _legendItem(
-          "Carbos",
-          Colors.orange,
-          "${goal.targetCarbs.toStringAsFixed(0)}g",
-        ),
-        _legendItem(
-          "Grasas",
-          Colors.red,
-          "${goal.targetFat.toStringAsFixed(0)}g",
-        ),
-      ],
-    );
-  }
-
   Widget _legendItem(String text, Color color, String value) {
     return Column(
       children: [

@@ -16,6 +16,7 @@ import 'providers/ingredient_master_provider.dart';
 import 'controllers/cooking_controller.dart';
 import 'controllers/pantry_controller.dart';
 import 'package:get/get.dart';
+import 'controllers/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeController()),
         ChangeNotifierProvider(create: (_) => RecipeAdminController()),
         ChangeNotifierProvider(create: (_) => HomeController()),
         ChangeNotifierProvider(
