@@ -146,7 +146,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     );
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         color: AppColors.nutveDarkGreen,
         onRefresh: () async {
@@ -604,7 +604,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
   Widget _buildHorizontalList(List<Recipe> recipes) {
     return SizedBox(
-      height: 310,
+      height: 330,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: recipes.length,

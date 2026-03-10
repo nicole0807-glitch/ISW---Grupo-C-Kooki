@@ -117,9 +117,19 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
+        // ← CAMBIO: Respetar modo oscuro
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF4CAF50)),
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF4CAF50),
+                    surface: Color(0xFF1E1E1E),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFF4CAF50),
+                  ),
           ),
           child: child!,
         );
@@ -204,23 +214,28 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.ingredient != null;
+    
+    // ← AGREGAR: Obtener colores del tema
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
 
     return GestureDetector(
-      // Cerrar dropdown al tocar fuera
       onTap: () => setState(() => _showDropdown = false),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,  // ← CAMBIO
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).appBarTheme.backgroundColor,  // ← CAMBIO
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.black),
+            icon: Icon(Icons.close, color: textColor),  // ← CAMBIO
             onPressed: () => Get.back(),
           ),
           title: Text(
             isEditing ? 'Editar ingrediente' : 'Agregar nuevo ingrediente',
-            style: const TextStyle(
-              color: Colors.black,
+            style: TextStyle(
+              color: textColor,  // ← CAMBIO
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -241,12 +256,12 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               // ── Ingredient Search ──────────────────────────────────────
-              const Text(
+              Text(
                 'Nombre del ingrediente',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: textColor,  // ← CAMBIO
                 ),
               ),
               const SizedBox(height: 8),
@@ -260,21 +275,34 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    border: Border.all(color: Colors.grey[300]!),
+                    color: isDark 
+                        ? Colors.white.withOpacity(0.05)  // ← CAMBIO: fondo sutil
+                        : const Color(0xFFF3F4F6),
+                    border: Border.all(
+                      color: isDark 
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.grey[300]!,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.lock, size: 20, color: Colors.grey),
+                      Icon(
+                        Icons.lock, 
+                        size: 20, 
+                        color: isDark ? Colors.white : Colors.grey,  // ← CAMBIO: candado blanco
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           widget.ingredient!.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
+                            color: isDark 
+                                ? Colors.grey[400]  // ← CAMBIO: texto gris oscuro
+                                : Colors.grey[700],
                             fontWeight: FontWeight.w500,
-                            color: Colors.black87,
+                            
                           ),
                         ),
                       ),
@@ -320,8 +348,12 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                       Container(
                         constraints: const BoxConstraints(maxHeight: 220),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: Colors.grey[300]!),
+                          color: cardColor,  // ← CAMBIO
+                          border: Border.all(
+                            color: isDark 
+                                ? Colors.white.withOpacity(0.2)
+                                : Colors.grey[300]!,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
@@ -349,7 +381,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                                       : FontWeight.normal,
                                   color: isSelected
                                       ? const Color(0xFF4CAF50)
-                                      : Colors.black87,
+                                      : textColor,  // ← CAMBIO: texto blanco en modo oscuro
                                 ),
                               ),
                               trailing: isSelected
@@ -408,12 +440,12 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
               const SizedBox(height: 20),
 
               // ── Quantity ───────────────────────────────────────────────
-              const Text(
+              Text(
                 'Cantidad',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: textColor,  // ← CAMBIO
                 ),
               ),
               const SizedBox(height: 8),
@@ -467,12 +499,12 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
               const SizedBox(height: 20),
 
               // ── Category ───────────────────────────────────────────────
-              const Text(
+              Text(
                 'Categoría',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: textColor,  // ← CAMBIO
                 ),
               ),
               const SizedBox(height: 12),
@@ -486,16 +518,18 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                     selected: isSelected,
                     onSelected: (_) =>
                         setState(() => _selectedCategory = category),
-                    backgroundColor: Colors.white,
+                    backgroundColor: cardColor,  // ← CAMBIO
                     selectedColor: const Color(0xFF4CAF50),
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
+                      color: isSelected ? Colors.white : textColor,  // ← CAMBIO
                       fontWeight: FontWeight.w500,
                     ),
                     side: BorderSide(
                       color: isSelected
                           ? const Color(0xFF4CAF50)
-                          : Colors.grey[300]!,
+                          : isDark 
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey[300]!,
                     ),
                   );
                 }).toList(),
@@ -505,18 +539,21 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
               // ── Expiration Date ────────────────────────────────────────
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Fecha de caducidad',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: textColor,  // ← CAMBIO
                     ),
                   ),
                   const Spacer(),
-                  const Text(
+                  Text(
                     'Opcional',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 12, 
+                      color: textColor.withOpacity(0.6),  // ← CAMBIO
+                    ),
                   ),
                 ],
               ),
@@ -529,14 +566,18 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(
+                      color: isDark 
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.grey[300]!,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.calendar_today,
-                        color: Colors.grey[600],
+                        color: textColor.withOpacity(0.7),  // ← CAMBIO
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -546,8 +587,8 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                             : 'Selecciona fecha',
                         style: TextStyle(
                           color: _expirationDate != null
-                              ? Colors.black
-                              : Colors.grey[400],
+                              ? textColor  // ← CAMBIO
+                              : textColor.withOpacity(0.5),  // ← CAMBIO
                         ),
                       ),
                       const Spacer(),

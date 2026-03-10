@@ -53,13 +53,29 @@ class NutveApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeController = context.watch<ThemeController>();
+
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Kooki',
+      themeMode: themeController.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
         colorSchemeSeed: AppColors.nutveDarkGreen,
         scaffoldBackgroundColor: AppColors.nutveBgGray,
+        cardColor: Colors.white,
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorSchemeSeed: AppColors.nutveSelectionGreen,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardColor: const Color(0xFF1E1E1E),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF121212),
+          elevation: 0,
+        ),
       ),
       home: const SplashScreen(),
     );

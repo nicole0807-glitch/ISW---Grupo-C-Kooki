@@ -35,17 +35,23 @@ class _PantryScreenState extends State<PantryScreen> {
 
   @override
   Widget build(BuildContext context) {
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: bgColor,  // ← Respetar tema
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,  // ← Respetar tema
         elevation: 0,
         title: Row(
           children: [
-            const Text(
+            Text(
               'Gestión de despensa',
               style: TextStyle(
-                color: Colors.black,
+                color: textColor,  // ← Respetar tema
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -68,15 +74,19 @@ class _PantryScreenState extends State<PantryScreen> {
         children: [
           // Search Bar
           Container(
-            color: Colors.white,
+            color: cardColor,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
               onChanged: controller.setSearchQuery,
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: 'Buscar ingredientes...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                hintStyle: TextStyle(color: textColor.withOpacity(0.5)),
+                prefixIcon: Icon(Icons.search, color: textColor.withOpacity(0.7)),
                 filled: true,
-                fillColor: const Color(0xFFF5F5F5),
+                fillColor: isDark 
+                  ? Colors.white.withOpacity(0.05)
+                  : const Color(0xFFF5F5F5),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -97,7 +107,10 @@ class _PantryScreenState extends State<PantryScreen> {
                 children: [
                   Text(
                     'Mostrando ${controller.filteredIngredients.length} de ${controller.totalItems} ingredientes',
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                    style: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -122,7 +135,7 @@ class _PantryScreenState extends State<PantryScreen> {
                         Icon(
                           Icons.inventory_2_outlined,
                           size: 80,
-                          color: Colors.grey[300],
+                         color: textColor.withOpacity(0.3),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -131,7 +144,7 @@ class _PantryScreenState extends State<PantryScreen> {
                               : 'Tu despensa está vacía',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: textColor.withOpacity(0.6), 
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -141,7 +154,7 @@ class _PantryScreenState extends State<PantryScreen> {
                               : 'Agrega tu primer ingrediente',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey[400],
+                            color: textColor.withOpacity(0.4),
                           ),
                         ),
                       ],
