@@ -126,22 +126,27 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   }
 
   void _onStartCooking() async {
+    // 1. Validar inventario
     final result = await _cookingController.validateInventory(widget.recipe.id);
     if (!mounted) return;
     if (result == null) return;
 
     if (result.canCook) {
+      // 2. Si tiene todo, ejecutar descuento directamente
       final success = await _cookingController.startCooking(widget.recipe.id);
       if (success && mounted) {
         // Navegar a cook mode...
       }
     } else {
+      // 3. Mostrar interfaz de faltantes
       _showMissingIngredientsSheet(result.missing);
     }
   }
 
   void _showMissingIngredientsSheet(List<MissingIngredient> missing) {
-    Set<int> selectedIndices = {for (int i = 0; i < missing.length; i++) i};
+    Set<int> selectedIndices = {
+      for (int i = 0; i < missing.length; i++) i,
+    }; // Seleccionar todos por defecto
 
     showModalBottomSheet(
       context: context,
@@ -212,10 +217,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                 ),
                                 onChanged: (val) {
                                   setModalState(() {
-                                    if (val == true)
+                                    if (val == true) {
                                       selectedIndices.add(index);
-                                    else
+                                    } else {
                                       selectedIndices.remove(index);
+                                    }
                                   });
                                 },
                               ),
@@ -255,12 +261,13 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   TextButton.icon(
                     onPressed: () {
                       setModalState(() {
-                        if (selectedIndices.length == missing.length)
+                        if (selectedIndices.length == missing.length) {
                           selectedIndices.clear();
-                        else
+                        } else {
                           selectedIndices = {
                             for (int i = 0; i < missing.length; i++) i,
                           };
+                        }
                       });
                     },
                     icon: Icon(
@@ -299,7 +306,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                   .toList();
                               final success = await _cookingController
                                   .addToShoppingList(toAdd);
-                              if (success && mounted) Navigator.pop(context);
+                              if (success && mounted) {
+                                Navigator.pop(context);
+                              }
                             },
                       child: _cookingController.isAddingToCart.value
                           ? const CircularProgressIndicator(color: Colors.black)
@@ -459,6 +468,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                   const SizedBox(height: 20),
                   const Divider(),
+                  // Perfil del Autor
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const CircleAvatar(
@@ -519,6 +529,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
         ],
       ),
+
+      // Botón START COOKING fijo
       bottomSheet: Container(
         padding: const EdgeInsets.all(20),
         color: Colors.white.withOpacity(0.9),

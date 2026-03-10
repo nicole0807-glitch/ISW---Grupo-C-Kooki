@@ -14,10 +14,10 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
   String? _selectedGoal;
   
   final List<Map<String, dynamic>> _goals = [
-    {'title': 'Eat Healthier', 'desc': 'Focus on nutritious, whole foods.', 'icon': Icons.favorite_rounded},
-    {'title': 'Lose Weight', 'desc': 'Manage calories and macros.', 'icon': Icons.monitor_weight_rounded},
-    {'title': 'Save Money', 'desc': 'Reduce waste and dining out costs.', 'icon': Icons.savings_rounded},
-    {'title': 'Learn to Cook', 'desc': 'Master new recipes and techniques.', 'icon': Icons.restaurant_menu_rounded},
+    {'title': 'Comer más sano', 'desc': 'Enfócate en alimentos nutritivos y completos.', 'icon': Icons.favorite_rounded},
+    {'title': 'Perder peso', 'desc': 'Controla calorías y macronutrientes.', 'icon': Icons.monitor_weight_rounded},
+    {'title': 'Ahorrar dinero', 'desc': 'Reduce desperdicios y gastos fuera de casa.', 'icon': Icons.savings_rounded},
+    {'title': 'Aprender a cocinar', 'desc': 'Domina nuevas recetas y técnicas.', 'icon': Icons.restaurant_menu_rounded},
   ];
 
   @override
@@ -27,7 +27,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text("1 of 3", style: TextStyle(fontSize: 14)),
+        title: const Text("1 de 3", style: TextStyle(fontSize: 14)),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(6),
           child: LinearProgressIndicator(value: 0.33, color: AppColors.nutveDarkGreen),
@@ -41,7 +41,7 @@ class _GoalSelectionScreenState extends State<GoalSelectionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("What is your main goal?", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const Text("¿Cuál es tu objetivo principal?", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 30),
                   Expanded(
                     child: ListView.separated(

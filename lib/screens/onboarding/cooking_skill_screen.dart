@@ -16,11 +16,10 @@ class _CookingSkillScreenState extends State<CookingSkillScreen> {
   bool _isFinalizing = false;
 
   final List<Map<String, dynamic>> _skills = [
-    {'title': 'Beginner', 'desc': 'I am just starting to cook.', 'icon': Icons.egg_outlined},
-    {'title': 'Intermediate', 'desc': 'I know the basics.', 'icon': Icons.soup_kitchen_outlined},
-    {'title': 'Pro', 'desc': 'I am a kitchen master.', 'icon': Icons.outdoor_grill_outlined},
+    {'title': 'Principiante', 'desc': 'Apenas estoy empezando a cocinar.', 'icon': Icons.egg_outlined},
+    {'title': 'Intermedio', 'desc': 'Conozco lo básico.', 'icon': Icons.soup_kitchen_outlined},
+    {'title': 'Profesional', 'desc': 'Soy un maestro de la cocina.', 'icon': Icons.outdoor_grill_outlined},
   ];
-
   Future<void> _saveAndFinish() async {
     setState(() => _isFinalizing = true);
     try {
@@ -45,7 +44,7 @@ class _CookingSkillScreenState extends State<CookingSkillScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text("3 of 3", style: TextStyle(fontSize: 14)),
+        title: const Text("3 de 3", style: TextStyle(fontSize: 14)),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(6),
           child: LinearProgressIndicator(value: 1.0, color: AppColors.nutveDarkGreen),
@@ -60,7 +59,7 @@ class _CookingSkillScreenState extends State<CookingSkillScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("How much time do you have to cook?", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const Text("¿Cuánto tiempo tienes para cocinar?", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -82,8 +81,8 @@ class _CookingSkillScreenState extends State<CookingSkillScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 40),
-                    const Text("Cooking Skill", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    const Text("Menciona tu nivel de habilidad de cocina", style: TextStyle(fontSize: 16, color: Colors.black54)),
+                    const Text("Habilidad culinaria", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const Text("Selecciona tu nivel de habilidad en la cocina", style: TextStyle(fontSize: 16, color: Colors.black54)),
                     const SizedBox(height: 20),
                     ..._skills.map((skill) {
                       final isSelected = _selectedSkill == skill['title'];

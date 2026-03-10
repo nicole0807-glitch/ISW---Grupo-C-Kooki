@@ -16,12 +16,12 @@ class IngredientCard extends StatelessWidget {
   }
 
   String _getStatusText() {
-    if (ingredient.isExpired) return 'Expired';
+    if (ingredient.isExpired) return 'Caducado';
     if (ingredient.expiresSoon) {
       final days = ingredient.daysUntilExpiration ?? 0;
-      return 'Expires in $days days';
+      return 'Caduca en $days días';
     }
-    return ingredient.status ?? 'Fresh';
+    return ingredient.status ?? 'Fresco';
   }
 
   void _showOptionsMenu(BuildContext context) {
@@ -39,7 +39,7 @@ class IngredientCard extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.edit, color: Color(0xFF4CAF50)),
-              title: const Text('Edit'),
+              title: const Text('Editar'),
               onTap: () {
                 Navigator.pop(context);
                 Get.to(() => AddIngredientScreen(ingredient: ingredient));
@@ -47,7 +47,7 @@ class IngredientCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete'),
+              title: const Text('Eliminar'),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDelete(context, controller);
@@ -55,7 +55,7 @@ class IngredientCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.cancel, color: Colors.grey),
-              title: const Text('Cancel'),
+              title: const Text('Cancelar'),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -65,27 +65,85 @@ class IngredientCard extends StatelessWidget {
   }
 
  void _confirmDelete(BuildContext context, PantryController controller) {
-  Get.dialog(
-    AlertDialog(
-      title: const Text('Delete Ingredient'),
-      content: Text('Are you sure you want to delete ${ingredient.name}?'),
-      actions: [
-        TextButton(
-          onPressed: () => Get.back(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () {
-            Get.back();
-            controller.deleteIngredient(ingredient.id!);  // ingredient.id ya es String
-          },
-          style: TextButton.styleFrom(foregroundColor: Colors.red),
-          child: const Text('Delete'),
-        ),
-      ],
-    ),
-  );
-}
+  // DEBUG: Ver todos los datos del ingrediente
+  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  print('🔍 DEBUG - Datos del ingrediente:');
+  print('   pantryId: ${ingredient.pantryId}');
+  print('   id (getter): ${ingredient.id}');
+  print('   ingredientMasterId: ${ingredient.ingredientMasterId}');
+  print('   name: ${ingredient.name}');
+  print('   userId: ${ingredient.userId}');
+  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  // Intentar obtener el ID: primero pantryId, luego id, luego ingredientMasterId
+    final deleteId = ingredient.pantryId?.toString() ?? 
+                     ingredient.id ?? 
+                     ingredient.ingredientMasterId.toString();
+
+Get.dialog(
+      AlertDialog(
+        title: const Text('Eliminar Ingrediente'),
+        content: Text('¿Estás seguro de que quieres eliminar ${ingredient.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Get.back(); // Cerrar confirmación
+
+              // Mostrar loading
+              Get.dialog(
+                const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF4CAF50),
+                  ),
+                ),
+                barrierDismissible: false,
+              );
+
+              try {
+                print('🔄 Llamando a deleteIngredient con: $deleteId');
+                await controller.deleteIngredient(deleteId);
+
+                // Cerrar loading
+                Get.back();
+
+                // Mostrar mensaje de éxito
+                Get.snackbar(
+                  'Éxito',
+                  'Ingrediente eliminado correctamente',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: const Color(0xFF4CAF50),
+                  colorText: Colors.white,
+                  duration: const Duration(seconds: 2),
+                  margin: const EdgeInsets.all(10),
+                  borderRadius: 8,
+                );
+              } catch (e) {
+                print('❌ Exception en delete: $e');
+                
+                // Cerrar loading
+                Get.back();
+                
+                // Mostrar error
+                Get.snackbar(
+                  'Error',
+                  'No se pudo eliminar: ${e.toString()}',
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +217,7 @@ class IngredientCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           ),
           child: const Text(
-            'Edit',
+            'Editar',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,

@@ -1,17 +1,139 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/recipe_model.dart';
+import '../models/user_recipe_model.dart';
 
 class RecipeService {
   final _supabase = Supabase.instance.client;
 
-  /// LEER RECETAS
-  /// [onlyApproved] si es true (por defecto), solo trae recetas validadas para el Home.
-  /// Si es false, trae todas (útil para el panel de Admin).
+  String _buildPostgrestError(PostgrestException e) {
+    final parts = <String>[
+      e.message
+    ];
+    return parts.join(' | ');
+  }
+
+  // ==========================================
+  // 1. RECETAS DE LA COMUNIDAD (user_recipes)
+  // ==========================================
+
+  Future<List<UserRecipe>> fetchCommunityRecipes() async {
+    try {
+      final response = await _supabase
+          .from('user_recipes')
+          .select()
+          .order('created_at', ascending: false);
+
+      return (response as List).map((data) => UserRecipe.fromMap(data)).toList();
+    } catch (e) {
+      print('Error fetching community: $e');
+      return [];
+    }
+  }
+
+  Future<String?> uploadRecipeImage(Uint8List imageBytes, String fileName) async {
+    try {
+      await _supabase.storage.from('recipe_images').uploadBinary(
+            fileName,
+            imageBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true,
+            ),
+          );
+
+      return _supabase.storage.from('recipe_images').getPublicUrl(fileName);
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  Future<void> saveRecipe(UserRecipe recipe) async {
+    final recipeData = <String, dynamic>{
+      'user_id': recipe.userId,
+      'user_name': recipe.userName,
+      'title': recipe.title,
+      'image_url': recipe.imageUrl,
+      'duration': recipe.duration,
+      'cost': recipe.cost,
+      'difficulty': recipe.difficulty,
+      'instructions': recipe.instructions,
+      'ingredients': recipe.ingredients,
+      'steps': recipe.steps,
+      'nutrition': recipe.nutrition,
+      'preference': '',
+      'avg_rating': 0.0,
+    };
+
+    final payload = Map<String, dynamic>.from(recipeData);
+    const missingColumnRegex = r'column "([^"]+)" of relation "user_recipes" does not exist';
+
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        await _supabase.from('user_recipes').insert(payload);
+        return;
+      } on PostgrestException catch (e) {
+        final message = e.message.toLowerCase();
+        final match = RegExp(missingColumnRegex).firstMatch(message);
+        final missingColumn = match?.group(1);
+
+        if (missingColumn != null && payload.containsKey(missingColumn)) {
+          payload.remove(missingColumn);
+          continue;
+        }
+
+        final pgError = _buildPostgrestError(e);
+        print('Error saving recipe (postgrest): $pgError');
+        throw Exception('No se pudo guardar la receta: $pgError');
+      } catch (e) {
+        print('Error saving recipe: $e');
+        throw Exception('No se pudo guardar la receta: $e');
+      }
+    }
+
+    throw Exception('No se pudo guardar la receta: esquema incompatible de user_recipes');
+  }
+
+  Future<void> addCommunityRating(String recipeId, int score) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      await _supabase.from('recipe_ratings').insert({
+        'recipe_id': recipeId,
+        'user_id': user?.id,
+        'rating': score,
+      });
+    } catch (e) {
+      print('Error al calificar: $e');
+    }
+  }
+
+  Future<void> addCommunityComment(String recipeId, String text) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      await _supabase.from('recipe_comments').insert({
+        'recipe_id': recipeId,
+        'user_id': user?.id,
+        'user_name': user?.userMetadata?['full_name'] ?? 'Anonimo',
+        'comment': text,
+      });
+    } catch (e) {
+      print('Error al comentar: $e');
+    }
+  }
+
+  // ==========================================
+  // 2. RECETAS DEL SISTEMA / ADMIN (Recipes)
+  // ==========================================
+
   Future<List<Recipe>> fetchRecipes({bool onlyApproved = true}) async {
     try {
       var query = _supabase.from('Recipes').select('''
         *,
         "Recipe_Ingredients" (
+          ingredient_id,
           amount,
           unit_abbreviation,
           "Ingredient" ( name )
@@ -22,31 +144,27 @@ class RecipeService {
         ),
         "Recipe_Tags" (
           tag_id
-        )
+        ),
         "Recipe_Validation" (
-        reviewer_id,
-        "Profile" ( username )
-      )
+          reviewer_id,
+          "Profile" ( username )
+        )
       ''');
 
-    
       if (onlyApproved) {
         query = query.eq('status', 'aprobado');
       }
 
       final response = await query.order('created_at', ascending: false);
-
       return (response as List).map((data) => Recipe.fromMap(data)).toList();
     } catch (e) {
-      print("Error detallado fetch: $e");
+      print('Error detallado fetch: $e');
       throw Exception('Error al cargar recetas: $e');
     }
   }
 
-  /// CREAR RECETA
   Future<void> createRecipe(Recipe recipe) async {
     try {
-      // 1. Insertar la Receta base
       final recipeData = {
         'title': recipe.title,
         'description': recipe.description,
@@ -54,42 +172,34 @@ class RecipeService {
         'cooking_time': recipe.cookingTime,
         'difficulty': recipe.difficulty,
         'nutrition': recipe.nutrition,
-        // CAMBIO: Al crearla, el estado inicial es 'pending' para que el nutricionista la vea
-        'status': 'pendiente', 
-        'is_validated': false, 
+        'status': 'pendiente',
+        'is_validated': false,
       };
 
-      final newRecipeRes = await _supabase
-          .from('Recipes')
-          .insert(recipeData)
-          .select('id')
-          .single();
-      
+      final newRecipeRes =
+          await _supabase.from('Recipes').insert(recipeData).select('id').single();
+
       final int newRecipeId = newRecipeRes['id'];
-
-      // 2. Insertar relaciones
       await _insertRelations(newRecipeId, recipe);
-
     } catch (e) {
-      print("Error creando receta: $e");
       throw Exception('Error al crear receta: $e');
     }
   }
 
-  /// ACTUALIZAR RECETA
   Future<void> updateRecipe(Recipe recipe) async {
     try {
-      await _supabase.from('Recipes').update({
-        'title': recipe.title,
-        'description': recipe.description,
-        'image_url': recipe.imageUrl,
-        'cooking_time': recipe.cookingTime,
-        'difficulty': recipe.difficulty,
-        'nutrition': recipe.nutrition,
-        // Al editar, la receta vuelve a estado 'pending' para re-validación
-        'status': 'pendiente',
-        'is_validated': false,
-      }).eq('id', recipe.id);
+      await _supabase
+          .from('Recipes')
+          .update({
+            'title': recipe.title,
+            'description': recipe.description,
+            'image_url': recipe.imageUrl,
+            'cooking_time': recipe.cookingTime,
+            'difficulty': recipe.difficulty,
+            'nutrition': recipe.nutrition,
+            'status': 'pendiente',
+          })
+          .eq('id', recipe.id);
 
       await _supabase.from('Recipe_Ingredients').delete().eq('recipe_id', recipe.id);
       await _supabase.from('Recipe_Steps').delete().eq('recipe_id', recipe.id);
@@ -101,7 +211,6 @@ class RecipeService {
     }
   }
 
-  /// ELIMINAR RECETA
   Future<void> deleteRecipe(int recipeId) async {
     try {
       await _supabase.from('Recipes').delete().eq('id', recipeId);
@@ -110,9 +219,7 @@ class RecipeService {
     }
   }
 
-  /// HELPERS
   Future<void> _insertRelations(int recipeId, Recipe recipe) async {
-    // A. Insertar Pasos
     if (recipe.steps.isNotEmpty) {
       final stepsData = recipe.steps.asMap().entries.map((entry) {
         return {
@@ -124,33 +231,30 @@ class RecipeService {
       await _supabase.from('Recipe_Steps').insert(stepsData);
     }
 
-    // B. Insertar Tags
     if (recipe.tagIds.isNotEmpty) {
-      final tagsData = recipe.tagIds.map((tagId) => {
-        'recipe_id': recipeId,
-        'tag_id': tagId,
-      }).toList();
+      final tagsData =
+          recipe.tagIds.map((tagId) => {'recipe_id': recipeId, 'tag_id': tagId}).toList();
       await _supabase.from('Recipe_Tags').insert(tagsData);
     }
 
-    // C. Insertar Ingredientes
     for (var ing in recipe.ingredients) {
-      final existingIng = await _supabase
-          .from('Ingredient')
-          .select('ingredient_id')
-          .ilike('name', ing.name)
-          .maybeSingle();
+      final existingIng =
+          await _supabase.from('Ingredient').select('ingredient_id').ilike('name', ing.name).maybeSingle();
 
       int ingredientId;
       if (existingIng != null) {
         ingredientId = existingIng['ingredient_id'];
       } else {
-        final newIng = await _supabase.from('Ingredient').insert({
-          'name': ing.name,
-          'exp_time': 7, 
-          'density_g/ml': 1,
-          'average_weight': 100
-        }).select('ingredient_id').single();
+        final newIng = await _supabase
+            .from('Ingredient')
+            .insert({
+              'name': ing.name,
+              'exp_time': 7,
+              'density_g/ml': 1,
+              'average_weight': 100,
+            })
+            .select('ingredient_id')
+            .single();
         ingredientId = newIng['ingredient_id'];
       }
 

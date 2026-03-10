@@ -94,19 +94,19 @@ class AuthController {
 }) async {
   try {
     final authResponse = await _service.signUp(email, password);
-    final user_id = authResponse.user?.id;
+    final userId = authResponse.user?.id;
 
-    if (user_id == null) throw Exception('No se pudo crear el usuario');
+    if (userId == null) throw Exception('No se pudo crear el usuario');
 
     // Inicializamos como null explícitamente
     String? avatarUrl; 
     
     if (imageFile != null) {
-      avatarUrl = await _service.uploadAvatar(user_id, imageFile);
+      avatarUrl = await _service.uploadAvatar(userId, imageFile);
     }
 
     await _service.supabase.from('Profile').insert({
-      'user_id': user_id,
+      'user_id': userId,
       'username': username,
       'email': email,
       'role_id': 1, 

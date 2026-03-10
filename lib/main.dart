@@ -5,8 +5,8 @@ import 'package:kooki/screens/home/home_screen_content.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'utils/app_colors.dart';
 import 'screens/splash_screen.dart';
-import 'package:provider/provider.dart'; // 1. Importar Provider
-import 'controllers/recipe_controller.dart'; // 2. Importar el controlador
+import 'package:provider/provider.dart';
+import 'controllers/recipe_controller.dart';
 import 'controllers/auth_controller.dart';
 import 'screens/recipe/admin_recipes_screen.dart';
 import 'controllers/home_controller.dart';
