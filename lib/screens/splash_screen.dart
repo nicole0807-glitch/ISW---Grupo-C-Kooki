@@ -19,33 +19,37 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () async {
-      if (mounted) {
-        if (_authController.hasSession()) {
-          final homeController = context.read<HomeController>();
-          await homeController.loadUserRole();
+    _checkInitialRedirection();
+  }
 
-          if (mounted) {
-            Widget nextScreen;
-            if (homeController.isNutricionista) {
-              nextScreen = const NutritionistMainScreen();
-            } else {
-              nextScreen = const MainLayout();
-            }
+  Future<void> _checkInitialRedirection() async {
+    await Future.delayed(const Duration(seconds: 3));
 
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => nextScreen),
-            );
+    if (mounted) {
+      if (_authController.hasSession()) {
+        final homeController = context.read<HomeController>();
+        await homeController.loadUserRole();
+
+        if (mounted) {
+          Widget nextScreen;
+          if (homeController.isNutricionista) {
+            nextScreen = const NutritionistMainScreen();
+          } else {
+            nextScreen = const MainLayout();
           }
-        } else {
+
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            MaterialPageRoute(builder: (_) => nextScreen),
           );
         }
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
       }
-    });
+    }
   }
 
   @override

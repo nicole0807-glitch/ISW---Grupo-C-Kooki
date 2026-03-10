@@ -4,6 +4,8 @@ import '../../../models/recipe_model.dart';
 import '../../../controllers/favorites_controller.dart';
 import '../../../utils/app_colors.dart';
 import '../../recipe/recipe_detail_screen.dart';
+import '../../recipe/user_recipe_detail_screen.dart';
+import '../../../models/user_recipe_model.dart';
 
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
@@ -12,65 +14,92 @@ class RecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lógica dinámica: solo mostramos el label si la calificación es >= 4.5
     final favorites = context.watch<FavoritesController>();
     final isFavorite = favorites.isFavorite(recipe.id);
     final bool isTopRated = recipe.rating >= 4.5;
 
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RecipeDetailScreen(recipe: recipe),
-          ),
-        );
+        final isCommunityRecipe = int.tryParse(recipe.id.toString()) == null;
+        if (isCommunityRecipe) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserRecipeDetailScreen(
+                recipe: UserRecipe(
+                  id: recipe.id.toString(),
+                  userId: '',
+                  userName: 'Cargando...',
+                  title: recipe.title,
+                  imageUrl: recipe.imageUrl ?? '',
+                  duration: recipe.cookingTime ?? '',
+                  cost: recipe.cost ?? '',
+                  difficulty: recipe.difficulty ?? '',
+                  ingredients: recipe.ingredients.map((i) => i.name).toList(),
+                  steps: recipe.steps,
+                  nutrition: recipe.nutrition,
+                ),
+              ),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RecipeDetailScreen(recipe: recipe),
+            ),
+          );
+        }
       },
       child: Container(
         width: 260,
-        margin: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(right: 20, bottom: 15, top: 5),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(25),
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              color: Colors.black.withOpacity(
+                Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.04,
+              ),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // --- PARTE SUPERIOR (IMAGEN + OVERLAYS) ---
             Stack(
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(25),
+                    top: Radius.circular(32),
                   ),
                   child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
                       ? Image.network(
                           recipe.imageUrl!,
-                          height: 170, // Un poco más alto para mejor proporción
+                          height: 180,
                           width: double.infinity,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                                height: 170,
-                                color: Colors.grey[200],
+                                height: 180,
+                                color: Colors.grey[100],
                                 child: const Icon(
-                                  Icons.broken_image,
+                                  Icons.broken_image_rounded,
                                   color: Colors.grey,
                                 ),
                               ),
                         )
                       : Container(
-                          height: 170,
-                          color: AppColors.nutveDarkGreen.withOpacity(0.1),
+                          height: 180,
+                          color: AppColors.nutveDarkGreen.withValues(
+                            alpha: 0.05,
+                          ),
                           child: const Icon(
-                            Icons.restaurant,
+                            Icons.restaurant_rounded,
                             color: AppColors.nutveDarkGreen,
                           ),
                         ),
@@ -78,52 +107,72 @@ class RecipeCard extends StatelessWidget {
 
                 // BOTÓN DE CORAZÓN (Favoritos)
                 Positioned(
-                  top: 12,
-                  right: 12,
-                  child: CircleAvatar(
-                    backgroundColor: Colors.white.withOpacity(0.9),
-                    radius: 18,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: Colors.red,
-                        size: 20,
+                  top: 15,
+                  right: 15,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => favorites.toggleFavorite(recipe.id),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(
+                            isFavorite
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_outline_rounded,
+                            color: isFavorite ? Colors.redAccent : Colors.grey,
+                            size: 20,
+                          ),
+                        ),
                       ),
-                      onPressed: () => favorites.toggleFavorite(recipe.id),
                     ),
                   ),
                 ),
 
-                // LABEL "TOP RATED" (Solo si rating >= 4.5)
+                // LABEL "TOP RATED"
                 if (isTopRated)
                   Positioned(
                     bottom: 12,
                     left: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
+                        horizontal: 12,
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.nutveDarkGreen.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(10),
+                        color: AppColors.nutveDarkGreen.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.star,
-                            color: AppColors.nutveSelectionGreen,
-                            size: 12,
+                          Icon(
+                            Icons.star_rounded,
+                            color: Colors.amber,
+                            size: 14,
                           ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            "MÁS VALORADA",
+                          SizedBox(width: 4),
+                          Text(
+                            "TOP RATED",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -134,9 +183,9 @@ class RecipeCard extends StatelessWidget {
               ],
             ),
 
-            // --- INFO DE LA RECETA ---
+            // INFO DE LA RECETA
             Padding(
-              padding: const EdgeInsets.all(15),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -144,55 +193,63 @@ class RecipeCard extends StatelessWidget {
                     recipe.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.nutveDarkGreen,
+                      fontWeight: FontWeight.w800,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : const Color(0xFF1B4332),
+                      letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   Text(
                     recipe.description ??
                         "Explora esta deliciosa receta saludable.",
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
                   ),
-                  const SizedBox(height: 15),
-
+                  const SizedBox(height: 18),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.timer_outlined,
+                      Icon(
+                        Icons.access_time_rounded,
                         size: 16,
-                        color: Colors.orange,
+                        color: Colors.grey.shade400,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
                         recipe.cookingTime ?? "-- min",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
                         ),
                       ),
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
-                          vertical: 4,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.nutveSelectionGreen.withOpacity(
-                            0.15,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
+                          color: const Color(
+                            0xFF52B788,
+                          ).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           recipe.difficulty ?? "Media",
                           style: const TextStyle(
-                            color: AppColors.nutveSelectionGreen,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF52B788),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            textBaseline: TextBaseline.alphabetic,
                           ),
                         ),
                       ),

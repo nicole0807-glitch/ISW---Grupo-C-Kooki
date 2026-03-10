@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 // Asegúrate de tener estas rutas correctas en tu proyecto
 import '../../controllers/adminDashboardController.dart';
 import '../recipe/admin_recipes_screen.dart';
-import '../../services/admin_service.dart'; 
+import '../../services/admin_service.dart';
+import 'admin_users_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -66,18 +67,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("Aviso a la Comunidad", style: GoogleFonts.poppins(color: textWhite)),
+        title: Text(
+          "Aviso a la Comunidad",
+          style: GoogleFonts.poppins(color: textWhite),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children:[
+          children: [
             TextField(
               controller: titleController,
               style: TextStyle(color: textWhite),
               decoration: InputDecoration(
                 labelText: "Título del mensaje",
                 labelStyle: TextStyle(color: textGrey),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: textGrey)),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentGreen)),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: textGrey),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: accentGreen),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -88,21 +96,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               decoration: InputDecoration(
                 labelText: "Contenido del aviso",
                 labelStyle: TextStyle(color: textGrey),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: textGrey)),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentGreen)),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: textGrey),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: accentGreen),
+                ),
               ),
             ),
           ],
         ),
-        actions:[
+        actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancelar", style: GoogleFonts.poppins(color: textGrey)),
+            child: Text(
+              "Cancelar",
+              style: GoogleFonts.poppins(color: textGrey),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: accentGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () {
               if (titleController.text.isNotEmpty) {
@@ -115,7 +132,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 );
               }
             },
-            child: Text("Enviar", style: GoogleFonts.poppins(color: bgDark, fontWeight: FontWeight.bold)),
+            child: Text(
+              "Enviar",
+              style: GoogleFonts.poppins(
+                color: bgDark,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -125,41 +148,170 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // --- DIÁLOGO ELIMINAR POR ID ---
   void _showDeleteByIdDialog() {
     final idController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("Eliminar por ID", style: GoogleFonts.poppins(color: Colors.redAccent)),
+        title: Text(
+          "Eliminar por ID",
+          style: GoogleFonts.poppins(color: Colors.redAccent),
+        ),
         content: TextField(
           controller: idController,
           style: TextStyle(color: textWhite),
           decoration: InputDecoration(
             labelText: "Ingrese el ID exacto",
             labelStyle: TextStyle(color: textGrey),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: textGrey)),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.redAccent)),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: textGrey),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.redAccent),
+            ),
           ),
         ),
-        actions:[
+        actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancelar", style: GoogleFonts.poppins(color: textGrey)),
+            child: Text(
+              "Cancelar",
+              style: GoogleFonts.poppins(color: textGrey),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () {
               // Aquí pondrías tu lógica de borrado por ID
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Acción de borrado pendiente de implementar")),
+                const SnackBar(
+                  content: Text("Acción de borrado pendiente de implementar"),
+                ),
               );
             },
-            child: Text("Eliminar", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text(
+              "Eliminar",
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- DIÁLOGO DE ENTRENAMIENTO IA ---
+  void _showTrainAIDialog() {
+    final keywordsController = TextEditingController();
+    final responseController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(Icons.psychology, color: Colors.deepPurpleAccent, size: 28),
+            const SizedBox(width: 12),
+            Text(
+              "Entrenar Kooki AI",
+              style: GoogleFonts.poppins(
+                color: textWhite,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Enseña a la IA a responder a palabras específicas. Separa las palabras clave por comas.",
+                style: GoogleFonts.poppins(color: textGrey, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: keywordsController,
+                style: TextStyle(color: textWhite),
+                decoration: InputDecoration(
+                  labelText: "Palabras clave (ej: dieta, calorías)",
+                  labelStyle: TextStyle(color: textGrey),
+                  prefixIcon: Icon(Icons.key, color: Colors.deepPurpleAccent),
+                  filled: true,
+                  fillColor: bgDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: responseController,
+                maxLines: 4,
+                style: TextStyle(color: textWhite),
+                decoration: InputDecoration(
+                  labelText: "Respuesta de Mitroglu",
+                  labelStyle: TextStyle(color: textGrey),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(bottom: 60),
+                    child: Icon(
+                      Icons.chat_bubble,
+                      color: Colors.deepPurpleAccent,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: bgDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancelar", style: TextStyle(color: textGrey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurpleAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            onPressed: () {
+              if (keywordsController.text.isNotEmpty &&
+                  responseController.text.isNotEmpty) {
+                Navigator.pop(context);
+                _handleAction(
+                  () => _adminService.trainAIModelWithData(
+                    keywordsController.text,
+                    responseController.text,
+                  ),
+                );
+              }
+            },
+            child: const Text(
+              "Entrenar",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -173,38 +325,64 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       builder: (context, child) {
         return Scaffold(
           backgroundColor: bgDark,
-          body: SafeArea(
-            // Usamos un Stack para poner el loader encima de todo sin perder el diseño
-            child: Stack(
-              children:[
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children:[
-                      _buildHeader(),
-                      const SizedBox(height: 40),
-                      
-                      Text(
-                        "Centro de gestión", 
-                        style: GoogleFonts.poppins(color: textWhite, fontSize: 20, fontWeight: FontWeight.bold)
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      _buildManagementHub(context),
-                    ],
-                  ),
-                ),
-
-                // Loader superpuesto
-                if (_isProcessing)
-                  Container(
-                    color: bgDark.withOpacity(0.7),
-                    child: Center(
-                      child: CircularProgressIndicator(color: accentGreen),
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  bgDark,
+                  const Color(0xFF161D1A),
+                  const Color(0xFF0F1412),
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(),
+                        const SizedBox(height: 32),
+                        _buildStatsRow(),
+                        const SizedBox(height: 32),
+                        Text(
+                          "Gestión Principal",
+                          style: GoogleFonts.poppins(
+                            color: textWhite,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildManagementHub(context),
+                      ],
                     ),
                   ),
-              ],
+                  if (_isProcessing)
+                    Container(
+                      color: Colors.black54,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: accentGreen),
+                            const SizedBox(height: 16),
+                            Text(
+                              "Procesando...",
+                              style: GoogleFonts.poppins(color: textWhite),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           bottomNavigationBar: _buildBottomNavBar(context),
@@ -213,160 +391,269 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        _buildStatCard(
+          "Reportes",
+          _controller.newReports.toString(),
+          Icons.warning_amber,
+          Colors.orange,
+        ),
+        const SizedBox(width: 16),
+        _buildStatCard("Usuarios", "Looading..", Icons.people, Colors.blue),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardDark.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                color: textWhite,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.poppins(color: textGrey, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     return Row(
-      children:[
-        const CircleAvatar(
-          radius: 24,
-          backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(colors: [accentGreen, Colors.blueAccent]),
+          ),
+          child: const CircleAvatar(
+            radius: 26,
+            backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+          ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children:[
-            Text("Administrador del sistema", style: GoogleFonts.poppins(color: textGrey, fontSize: 12)),
-
-            Text("Panel de Kooki", style: GoogleFonts.poppins(color: textWhite, fontSize: 18, fontWeight: FontWeight.w600)),
-
+          children: [
+            Text(
+              "Panel de Control",
+              style: GoogleFonts.poppins(
+                color: accentGreen,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+              ),
+            ),
+            Text(
+              "Hola, Admin 👋",
+              style: GoogleFonts.poppins(
+                color: textWhite,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         const Spacer(),
-        Stack(
-          children:[
-            Icon(Icons.notifications, color: textWhite, size: 28),
-            if (_controller.newReports > 0)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                ),
-              )
-          ],
-        )
+        _buildIconButton(Icons.notifications_outlined, () {}),
       ],
+    );
+  }
+
+  Widget _buildIconButton(IconData icon, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardDark,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: textWhite, size: 24),
+        onPressed: onTap,
+      ),
     );
   }
 
   Widget _buildManagementHub(BuildContext context) {
     return Column(
-      children:[
-        // --- BOTONES ORIGINALES DEL DASHBOARD ---
-
-        _buildMenuButton(
-          "Gestión de usuarios", 
-          "Roles y permisos", 
-          Icons.manage_accounts, 
-          Colors.blue,
-          () {}, 
-        ),
-        const SizedBox(height: 16),
-
-        _buildMenuButton(
-          "CRUD de recetas", 
-          "Crear, editar y eliminar", 
-          Icons.book, 
-          lightGreen,
+      children: [
+        _buildModernMenuButton(
+          "Usuarios y Roles",
+          "Gestionar accesos y permisos",
+          Icons.group_add_rounded,
+          [Colors.blue, Colors.blueAccent],
           () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const AdminRecipesScreen()),
+              MaterialPageRoute(builder: (context) => const AdminUsersScreen()),
             );
           },
         ),
         const SizedBox(height: 16),
-
-        _buildMenuButton(
-          "Moderación", 
-          "Contenido reportado y denuncias", 
-          Icons.gavel, 
-          Colors.orange,
-          () {}, 
-        ),
-        
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: Divider(color: Colors.white24, thickness: 1),
-        ),
-        
-        Text(
-          "Operaciones del sistema", 
-          style: GoogleFonts.poppins(color: textWhite, fontSize: 20, fontWeight: FontWeight.bold)
-        ),
-        const SizedBox(height: 20),
-
-        // --- BOTONES MIGRADOS DEL CONTROL PANEL ---
-
-        _buildMenuButton(
-          "Entrenar IA", 
-          "Actualiza el motor de recomendaciones", 
-          Icons.psychology, 
-          Colors.deepPurpleAccent,
-          () => _handleAction(() => _adminService.trainAIModel()),
+        _buildModernMenuButton(
+          "Biblioteca de Recetas",
+          "Contenido oficial y de usuario",
+          Icons.restaurant_menu_rounded,
+          [accentGreen, const Color(0xFF15803D)],
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminRecipesScreen(),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 16),
-
-        _buildMenuButton(
-          "Mandar Notificación", 
-          "Aviso global para toda la comunidad", 
-          Icons.campaign, 
-          Colors.amber,
+        _buildModernMenuButton(
+          "Moderación activa",
+          "Revisar denuncias pendientes",
+          Icons.verified_user_rounded,
+          [Colors.orange, Colors.deepOrange],
+          () {},
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: Divider(color: Colors.white10),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            "Inteligencia Artificial",
+            style: GoogleFonts.poppins(
+              color: textWhite,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildModernMenuButton(
+          "Entrenar Mitroglu AI",
+          "Nuevas palabras y conocimientos",
+          Icons.auto_awesome_rounded,
+          [Colors.deepPurple, Colors.purpleAccent],
+          () => _showTrainAIDialog(),
+        ),
+        const SizedBox(height: 16),
+        _buildModernMenuButton(
+          "Aviso Comunitario",
+          "Notificación global push",
+          Icons.sensors_rounded,
+          [Colors.amber, Colors.orangeAccent],
           () => _showCustomNotificationDialog(),
         ),
         const SizedBox(height: 16),
-
-        _buildMenuButton(
-          "Eliminar por ID", 
-          "Usa esto solo si conoces el ID exacto", 
-          Icons.delete_forever, 
-          Colors.redAccent,
+        _buildModernMenuButton(
+          "Acciones de Limpieza",
+          "Eliminación forzada por ID",
+          Icons.auto_delete_rounded,
+          [Colors.redAccent, Colors.red.shade900],
           () => _showDeleteByIdDialog(),
         ),
-        const SizedBox(height: 40), // Espacio extra al final
+        const SizedBox(height: 40),
       ],
     );
   }
 
-  Widget _buildMenuButton(String title, String subtitle, IconData icon, Color iconBg, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap, 
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: cardDark,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow:[
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            )
-          ]
-        ),
-        child: Row(
-          children:[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconBg.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconBg == lightGreen ? Colors.white : iconBg, size: 28),
+  Widget _buildModernMenuButton(
+    String title,
+    String subtitle,
+    IconData icon,
+    List<Color> gradientColors,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardDark.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: gradientColors,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradientColors[0].withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.poppins(
+                          color: textWhite,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.poppins(
+                          color: textGrey,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: textGrey.withOpacity(0.5),
+                  size: 18,
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded( // <-- Evita errores de overflow si el texto es largo
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children:[
-                  Text(title, style: GoogleFonts.poppins(color: textWhite, fontSize: 16, fontWeight: FontWeight.w600)),
-                  Text(subtitle, style: GoogleFonts.poppins(color: textGrey, fontSize: 12)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, color: textGrey),
-          ],
+          ),
         ),
       ),
     );
@@ -374,36 +661,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildBottomNavBar(BuildContext context) {
     return Container(
+      height: 90,
       decoration: BoxDecoration(
         color: bgDark,
-        border: Border(top: BorderSide(color: cardDark, width: 1)),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children:[
-          GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              decoration: BoxDecoration(
-                color: cardDark,
-                borderRadius: BorderRadius.circular(20)
+      child: Center(
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accentGreen.withOpacity(0.2), Colors.transparent],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children:[
-                  Icon(Icons.home, color: accentGreen, size: 28),
-                  const SizedBox(width: 8),
-                  Text("Inicio", style: GoogleFonts.poppins(color: accentGreen, fontWeight: FontWeight.bold)),
-
-                ],
-              ),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.dashboard_rounded, color: accentGreen),
+                const SizedBox(width: 12),
+                Text(
+                  "Dashboard",
+                  style: GoogleFonts.poppins(
+                    color: accentGreen,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
