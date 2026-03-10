@@ -3,6 +3,9 @@ import '../../controllers/auth_controller.dart';
 import '../../utils/app_colors.dart';
 import 'auth/login_screen.dart';
 import 'home/main_layout.dart';
+import 'nutritionist/nutritionist_main_screen.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/home_controller.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -16,13 +19,25 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 3), () async {
       if (mounted) {
         if (_authController.hasSession()) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainLayout()),
-          );
+          final homeController = context.read<HomeController>();
+          await homeController.loadUserRole();
+
+          if (mounted) {
+            Widget nextScreen;
+            if (homeController.isNutricionista) {
+              nextScreen = const NutritionistMainScreen();
+            } else {
+              nextScreen = const MainLayout();
+            }
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => nextScreen),
+            );
+          }
         } else {
           Navigator.pushReplacement(
             context,

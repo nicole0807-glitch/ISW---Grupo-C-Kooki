@@ -6,8 +6,13 @@ import '../../services/recipe_validation_service.dart';
 
 class ReviewRecipeScreen extends StatefulWidget {
   final Recipe recipe;
+  final bool viewOnly;
 
-  const ReviewRecipeScreen({super.key, required this.recipe});
+  const ReviewRecipeScreen({
+    super.key,
+    required this.recipe,
+    this.viewOnly = false,
+  });
 
   @override
   State<ReviewRecipeScreen> createState() => _ReviewRecipeScreenState();
@@ -93,9 +98,12 @@ class _ReviewRecipeScreenState extends State<ReviewRecipeScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Revisar Receta",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        title: Text(
+          widget.viewOnly ? "Ver Receta" : "Revisar Receta",
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -108,7 +116,7 @@ class _ReviewRecipeScreenState extends State<ReviewRecipeScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 180),
+            padding: EdgeInsets.only(bottom: widget.viewOnly ? 32 : 180),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -132,7 +140,7 @@ class _ReviewRecipeScreenState extends State<ReviewRecipeScreen> {
               ],
             ),
           ),
-          _buildBottomActions(),
+          if (!widget.viewOnly) _buildBottomActions(),
         ],
       ),
     );
@@ -245,7 +253,7 @@ class _ReviewRecipeScreenState extends State<ReviewRecipeScreen> {
   ) {
     return CheckboxListTile(
       value: value,
-      onChanged: onChanged,
+      onChanged: widget.viewOnly ? null : onChanged,
       activeColor: const Color(0xFF13EC5B),
       controlAffinity: ListTileControlAffinity.trailing,
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -262,8 +270,11 @@ class _ReviewRecipeScreenState extends State<ReviewRecipeScreen> {
       child: TextField(
         controller: _notesController,
         maxLines: 6,
+        readOnly: widget.viewOnly,
         decoration: InputDecoration(
-          hintText: "Escribe comentarios específicos para el autor...",
+          hintText: widget.viewOnly
+              ? "Sin notas del revisor"
+              : "Escribe comentarios específicos para el autor...",
           filled: true,
           fillColor: Colors.white,
           border: OutlineInputBorder(

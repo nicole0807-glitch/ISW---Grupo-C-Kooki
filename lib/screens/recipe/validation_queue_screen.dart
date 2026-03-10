@@ -12,7 +12,6 @@ class ValidationQueueScreen extends StatefulWidget {
 
 class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
   final RecipeValidationService _service = RecipeValidationService();
-  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -21,12 +20,8 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
-          "Validation Queue",
+          "Cola de Validación",
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -45,9 +40,11 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
       ]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF13EC5B)));
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF13EC5B)),
+          );
         }
-        
+
         if (snapshot.hasError) {
           return Center(child: Text("Error: ${snapshot.error}"));
         }
@@ -67,8 +64,8 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
               children: [
                 _buildStatsRow(recipes.length, reviewedCount),
                 _buildSearchBar(),
-                _buildSectionHeader("Priority Queue", isHighPriority: true),
-                
+                _buildSectionHeader("Cola Prioritaria", isHighPriority: true),
+
                 if (recipes.isEmpty)
                   const Center(
                     child: Padding(
@@ -77,9 +74,13 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
                     ),
                   ),
 
-                ...priorityRecipes.map((r) => _buildRecipeItem(r, isPriority: true)),
-                _buildSectionHeader("Recent Submissions"),
-                ...recentRecipes.map((r) => _buildRecipeItem(r, isPriority: false)),
+                ...priorityRecipes.map(
+                  (r) => _buildRecipeItem(r, isPriority: true),
+                ),
+                _buildSectionHeader("Envíos Recientes"),
+                ...recentRecipes.map(
+                  (r) => _buildRecipeItem(r, isPriority: false),
+                ),
                 const SizedBox(height: 100),
               ],
             ),
@@ -94,9 +95,9 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
-          _buildStatCard("Pending", pendingCount.toString()),
+          _buildStatCard("Pendientes", pendingCount.toString()),
           const SizedBox(width: 16),
-          _buildStatCard("Reviewed Today", reviewedToday.toString()),
+          _buildStatCard("Revisadas Hoy", reviewedToday.toString()),
         ],
       ),
     );
@@ -114,10 +115,19 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label.toUpperCase(), 
-              style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 10,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),
@@ -129,11 +139,14 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
         decoration: InputDecoration(
-          hintText: "Search by recipe or author",
+          hintText: "Buscar por receta o autor",
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );
@@ -145,16 +158,25 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           if (isHighPriority)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF13EC5B).withOpacity(0.1), 
-                borderRadius: BorderRadius.circular(20)
+                color: const Color(0xFF13EC5B).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text("High Priority", 
-                style: TextStyle(color: Color(0xFF13EC5B), fontSize: 10, fontWeight: FontWeight.bold)),
+              child: const Text(
+                "Alta Prioridad",
+                style: TextStyle(
+                  color: Color(0xFF13EC5B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
         ],
       ),
@@ -173,10 +195,12 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.network(
-              recipe.imageUrl ?? '', 
-              width: 64, height: 64, 
-              fit: BoxFit.cover, 
-              errorBuilder: (_, __, ___) => Container(color: Colors.grey, width: 64, height: 64)
+              recipe.imageUrl ?? '',
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Container(color: Colors.grey, width: 64, height: 64),
             ),
           ),
           const SizedBox(width: 16),
@@ -184,23 +208,42 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(recipe.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const Text("by Author", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                Text(
+                  recipe.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  recipe.reviewerName != null
+                      ? 'por ${recipe.reviewerName}'
+                      : 'Kooki Chef',
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
+                ),
               ],
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isPriority ? const Color(0xFF13EC5B) : const Color(0xFF13EC5B).withOpacity(0.1),
-              foregroundColor: isPriority ? Colors.black : const Color(0xFF13EC5B),
+              backgroundColor: isPriority
+                  ? const Color(0xFF13EC5B)
+                  : const Color(0xFF13EC5B).withOpacity(0.1),
+              foregroundColor: isPriority
+                  ? Colors.black
+                  : const Color(0xFF13EC5B),
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () async {
               // CAMBIO CLAVE: Esperar el resultado de la pantalla de revisión
               final bool? wasReviewed = await Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (_) => ReviewRecipeScreen(recipe: recipe))
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReviewRecipeScreen(recipe: recipe),
+                ),
               );
 
               // Si se validó con éxito, refrescamos la lista y contadores
@@ -208,7 +251,10 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
                 setState(() {});
               }
             },
-            child: const Text("Review", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Revisar",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -216,21 +262,6 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
   }
 
   Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade200))),
-      child: BottomNavigationBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        selectedItemColor: const Color(0xFF13EC5B),
-        unselectedItemColor: Colors.grey,
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: "Queue"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }

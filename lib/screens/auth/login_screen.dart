@@ -4,6 +4,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart'; // IMPORTANTE: Para refrescar el rol
 import '../../utils/app_colors.dart';
 import '../home/main_layout.dart';
+import '../nutritionist/nutritionist_main_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -51,12 +52,20 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         // --- LA PIEZA CLAVE ---
         // Antes de ir al Home, obligamos al HomeController a verificar el nuevo usuario
-        await context.read<HomeController>().loadUserRole();
+        final homeController = context.read<HomeController>();
+        await homeController.loadUserRole();
 
         if (mounted) {
+          Widget nextScreen;
+          if (homeController.isNutricionista) {
+            nextScreen = const NutritionistMainScreen();
+          } else {
+            nextScreen = const MainLayout();
+          }
+
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const MainLayout()),
+            MaterialPageRoute(builder: (_) => nextScreen),
           );
         }
       }
@@ -113,28 +122,39 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _buildField("Username", Icons.person_outline, _usernameController),
+                    _buildField(
+                      "Username",
+                      Icons.person_outline,
+                      _usernameController,
+                    ),
                     const SizedBox(height: 15),
-                    _buildField("Password", Icons.lock_outline, _passwordController, isPass: true),
+                    _buildField(
+                      "Password",
+                      Icons.lock_outline,
+                      _passwordController,
+                      isPass: true,
+                    ),
                     const SizedBox(height: 25),
-                    
+
                     // Botón con estado de carga
-                    _isLoading 
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppColors.nutveDarkGreen,
-                            minimumSize: const Size(double.infinity, 50),
+                    _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppColors.nutveDarkGreen,
+                              minimumSize: const Size(double.infinity, 50),
+                            ),
+                            onPressed: _login,
+                            child: const Text("INGRESAR"),
                           ),
-                          onPressed: _login,
-                          child: const Text("INGRESAR"),
-                        ),
-                        
+
                     TextButton(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterScreen(),
+                        ),
                       ),
                       child: const Text(
                         "¿No tienes cuenta? Crear perfil",
@@ -151,7 +171,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildField(String label, IconData icon, TextEditingController? controller, {bool isPass = false}) {
+  Widget _buildField(
+    String label,
+    IconData icon,
+    TextEditingController? controller, {
+    bool isPass = false,
+  }) {
     return TextField(
       controller: controller,
       obscureText: isPass,
