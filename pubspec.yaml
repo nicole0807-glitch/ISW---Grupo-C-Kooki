@@ -1,0 +1,45 @@
+name: kooki
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  image_picker: ^1.2.1
+  provider: ^6.1.5+1
+  supabase_flutter: ^2.12.0
+  get: ^4.6.5
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.4
+  permission_handler: ^12.0.1
+
+  fl_chart: ^0.66.0
+  google_fonts: ^6.1.0
+  intl: ^0.19.0
+  shared_preferences: ^2.5.4
+  pdf: ^3.11.1
+  printing: ^5.14.2
+  google_generative_ai: ^0.4.7
+  timeago: ^3.7.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
+    - assets/imagen_main.png
+    - assets/imagen_boton_home.png
+    - assets/Mitroglu1.png
+    - assets/Mitroglu2.png
+    - assets/Mitroglu3.png
+    - assets/Mitroglu4.png
+    - assets/
