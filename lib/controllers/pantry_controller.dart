@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/ingredient.dart';
 import '../services/pantry_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/app_colors.dart';
 
 class PantryController extends GetxController {
   final PantryService _pantryService = PantryService();
@@ -34,17 +35,17 @@ class PantryController extends GetxController {
         print(
           'PantryController: Auth change detected ($event). Loading ingredients...',
         );
-        loadIngredients();
+        loadIngredients(showError: false);
       }
     });
 
-    loadIngredients();
+    loadIngredients(showError: false);
   }
 
   String? get userId => Supabase.instance.client.auth.currentUser?.id;
 
   /// Cargar todos los ingredientes
-  Future<void> loadIngredients() async {
+  Future<void> loadIngredients({bool showError = true}) async {
     if (userId == null) return;
 
     try {
@@ -52,16 +53,34 @@ class PantryController extends GetxController {
       allIngredients.assignAll(await _pantryService.getIngredients(userId!));
       applyFilters();
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      debugPrint('Error loading ingredients: $e');
+      if (showError) _handleError(e);
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void _handleError(dynamic e) {
+    String message = e.toString();
+    if (message.contains('SocketException') ||
+        message.contains('ClientException') ||
+        message.contains('Network') ||
+        message.contains('Failed host lookup')) {
+      message = 'Error de conexión. Verifica tu internet.';
+    } else {
+      message = 'No se pudo completar la operación.';
+    }
+
+    Get.snackbar(
+      'Aviso',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.nutveSelectionGreen.withOpacity(0.9),
+      colorText: Colors.white,
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(10),
+      borderRadius: 8,
+    );
   }
 
   /// Add new ingredient
@@ -84,13 +103,7 @@ class PantryController extends GetxController {
       );
       return true;
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _handleError(e);
       return false;
     } finally {
       isLoading.value = false;
@@ -116,7 +129,7 @@ class PantryController extends GetxController {
       );
       return true;
     } catch (e) {
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.BOTTOM);
+      _handleError(e);
       return false;
     } finally {
       isLoading.value = false;
@@ -228,13 +241,7 @@ class PantryController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _handleError(e);
     } finally {
       isLoading.value = false;
     }

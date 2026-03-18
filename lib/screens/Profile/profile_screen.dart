@@ -38,14 +38,26 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
   final ProfileService _profileService = ProfileService();
+  late Future<Map<String, dynamic>?> _profileFuture;
+  late Future<List<dynamic>> _savedRecipesFuture;
 
   @override
   void initState() {
     super.initState();
     // Prepare future for FutureBuilder
     _profileFuture = _profileService.getProfileData();
+    _loadSavedRecipes();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PremiumController>().loadStatus();
+    });
+  }
+
+  void _loadSavedRecipes() {
+    setState(() {
+      _savedRecipesFuture = Future.wait([
+        RecipeService().fetchRecipes(),
+        RecipeService().fetchCommunityRecipes(),
+      ]);
     });
   }
 
@@ -138,45 +150,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  //Variables de sesión
-  /*
-  String? _userName;
-  String? _avatarURL;
-  */
-
-  //Instancia del backen de profile
-  late Future<Map<String, dynamic>?> _profileFuture;
-  // final ProfileService _profileService = ProfileService();
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _profileFuture = _profileService.getProfileData();
-  // }
-
-  /*
-  //Función para cargar los datos del usuario
-  Future<void> _loadUserData() async {
-    //Si no hay usuario logueado no se ejecuta
-    if (!_profileService.isUserLoggedIn) {
-      setState(() {
-      _userName = "Desarrollador Test";
-      _avatarURL = "https://i.pravatar.cc/300"; // Una imagen aleatoria de internet
-      });
-      return;
-    }
-    
-    //Si hay usuario registrado se obtienen sus datos
-    final data = await _profileService.getProfileData();
-    
-    if (data != null && mounted) {
-      //Se asignan los datos a las variables:
-      _userName = data['username'] ?? 'Usuario';
-      _avatarURL = data['avatar_url'];
-    }
-    
-  }
-  */
 
   // --- DISEÑO CIERRE DE SESIÓN ---
   void _showLogoutDialog(BuildContext context) {
@@ -718,10 +691,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return FutureBuilder<List<dynamic>>(
-      future: Future.wait([
-        RecipeService().fetchRecipes(),
-        RecipeService().fetchCommunityRecipes(),
-      ]),
+      future: _savedRecipesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
@@ -729,6 +699,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Error al cargar recetas",
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  TextButton.icon(
+                    onPressed: _loadSavedRecipes,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text(
+                      "Reintentar",
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.nutveSelectionGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         if (!snapshot.hasData) return const SizedBox();
 
         final allRecipes = snapshot.data![0] as List<Recipe>;

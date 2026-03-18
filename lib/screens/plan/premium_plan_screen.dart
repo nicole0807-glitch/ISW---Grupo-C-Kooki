@@ -39,6 +39,7 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
   int _targetCalories = 2000;
   bool _loadingPlan = false;
   bool _isChecking = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -71,12 +72,14 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
   Future<void> _loadGoalAndGenerate() async {
     if (!mounted || _isChecking) return;
-    setState(() {
-      _loadingPlan = true;
-      _isChecking = true;
-    });
-
     try {
+      if (!mounted) return;
+      setState(() {
+        _loadingPlan = true;
+        _isChecking = true;
+        _errorMessage = null;
+      });
+
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId != null) {
         final goal = await _goalService.getUserGoals(userId);
@@ -90,26 +93,21 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
         const Duration(seconds: 15),
       );
 
-      _generateWeeklyPlan();
+      if (mounted) _generateWeeklyPlan();
     } catch (e) {
       debugPrint('Error en _loadGoalAndGenerate: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar el plan: $e'),
-            action: SnackBarAction(
-              label: 'Reintentar',
-              onPressed:
-                  _loadGoalAndGenerate, // Reverted to original as _showReportDialog is not defined and 'AndGenerate' is invalid syntax.
-            ),
-          ),
-        );
+        setState(() {
+          _errorMessage =
+              'No pudimos cargar tu plan. Revisa tu conexión a internet.';
+        });
       }
     } finally {
-      _loadingPlan = false;
-      _isChecking = false;
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _loadingPlan = false;
+          _isChecking = false;
+        });
       }
     }
   }
@@ -400,6 +398,9 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
               ),
               const SizedBox(height: 20),
               const Center(child: Text('Cargando tu plan personalizado...')),
+            ] else if (_errorMessage != null) ...[
+              const SizedBox(height: 60),
+              _buildErrorState(_errorMessage!, _loadGoalAndGenerate),
             ] else ...[
               _plannerControls(context),
               const SizedBox(height: 16),
@@ -407,6 +408,61 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
               const SizedBox(height: 16),
               _dayMeals(context),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message, VoidCallback onRetry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white10 : Colors.grey.shade200,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 48,
+              color: isDark ? Colors.white24 : Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.nutveSelectionGreen,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text(
+                "Intentar de nuevo",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
       ),
