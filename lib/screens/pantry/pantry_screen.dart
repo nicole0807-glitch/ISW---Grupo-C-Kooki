@@ -202,7 +202,7 @@ class _PantryScreenState extends State<PantryScreen> {
       ),
 
       // Floating Action Button - Premium
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
@@ -213,15 +213,7 @@ class _PantryScreenState extends State<PantryScreen> {
         },
         backgroundColor: AppColors.nutveSelectionGreen,
         elevation: 4,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          "AGREGAR",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
-        ),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

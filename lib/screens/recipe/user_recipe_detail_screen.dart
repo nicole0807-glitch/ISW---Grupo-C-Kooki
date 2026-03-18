@@ -687,6 +687,14 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
                   Image.network(
                     widget.recipe.imageUrl,
                     fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.nutveSelectionGreen.withOpacity(0.5),
+                        ),
+                      );
+                    },
                     errorBuilder: (context, error, stackTrace) => Container(
                       alignment: Alignment.center,
                       color: isDark ? Colors.white10 : Colors.grey.shade100,

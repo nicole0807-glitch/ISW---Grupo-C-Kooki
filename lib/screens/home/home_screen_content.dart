@@ -337,7 +337,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                               const SizedBox(height: 20),
                               if (communityRecipes.isNotEmpty)
                                 SizedBox(
-                                  height: 320,
+                                  height: 295,
                                   child: ListView.builder(
                                     scrollDirection: Axis.horizontal,
                                     physics: const BouncingScrollPhysics(),
@@ -462,22 +462,49 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(30),
                       ),
-                      child: Image.network(
-                        recipe.imageUrl,
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          height: 150,
-                          alignment: Alignment.center,
-                          color: isDark ? Colors.white10 : Colors.grey.shade100,
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: isDark ? Colors.white24 : Colors.grey.shade400,
-                            size: 40,
-                          ),
-                        ),
-                      ),
+                      child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
+                          ? Image.network(
+                              recipe.imageUrl!,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.nutveSelectionGreen.withOpacity(0.5),
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    alignment: Alignment.center,
+                                    color: isDark ? Colors.white10 : Colors.grey.shade100,
+                                    child: Icon(
+                                      Icons.image_outlined,
+                                      color: isDark ? Colors.white24 : Colors.grey.shade400,
+                                      size: 40,
+                                    ),
+                                  ),
+                            )
+                          : Container(
+                              height: 150,
+                              width: double.infinity,
+                              alignment: Alignment.center,
+                              color: isDark ? Colors.white10 : Colors.grey.shade100,
+                              child: Icon(
+                                Icons.image_outlined,
+                                color: isDark ? Colors.white24 : Colors.grey.shade400,
+                                size: 40,
+                              ),
+                            ),
                     ),
                     Positioned(
                       bottom: 10,
@@ -853,7 +880,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
   Widget _buildHorizontalList(List<Recipe> recipes) {
     return SizedBox(
-      height: 360,
+      height: 335,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
@@ -1054,7 +1081,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       AppPermission.moderateCommunityRecipes,
     );
     return SizedBox(
-      height: 340,
+      height: 320,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,

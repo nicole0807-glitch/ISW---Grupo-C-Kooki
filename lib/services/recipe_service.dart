@@ -44,7 +44,7 @@ class RecipeService {
             fileName,
             imageBytes,
             fileOptions: const FileOptions(
-              contentType: 'image/jpeg',
+              contentType: 'image/webp',
               upsert: true,
             ),
           );

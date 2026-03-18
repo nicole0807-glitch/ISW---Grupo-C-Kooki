@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 //Se importa supabase para constuir una instancia privada para manejar el perfil. Esto ya incluye auth.
@@ -225,20 +224,15 @@ class ProfileService {
     }
   }
 
-  // --- MI PERFIL: CARGAR FOTO ---
-  Future<String?> updateAvatar(Uint8List imageBytes) async {
+  // --- MI PERFIL: ACTUALIZAR URL DE FOTO ---
+  Future<String?> updateAvatarUrl(String url) async {
     try {
       final userID = currentUser?.id;
       if (userID == null) return "No hay sesión activa";
 
-      final supabaseService = SupabaseService();
-      final avatarUrl = await supabaseService.uploadAvatar(userID, imageBytes);
-
-      // Actualizar en la tabla Profile
       await _supabase
           .from('Profile')
-          .update({'avatar_url': avatarUrl})
-          .eq('user_id', userID);
+          .update({'avatar_url': url}).eq('user_id', userID);
 
       return null; // Éxito
     } catch (e) {

@@ -19,7 +19,8 @@ import '../../widgets/guest_view_placeholder.dart';
 enum _MealSlot { breakfast, lunch, snack, dinner }
 
 class PremiumPlanScreen extends StatefulWidget {
-  const PremiumPlanScreen({super.key});
+  final bool showAppBar;
+  const PremiumPlanScreen({super.key, this.showAppBar = false});
 
   @override
   State<PremiumPlanScreen> createState() => _PremiumPlanScreenState();
@@ -360,8 +361,9 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
   @override
   Widget build(BuildContext context) {
     if (!AuthController().hasSession()) {
-      return const Scaffold(
-        body: GuestViewPlaceholder(
+      return Scaffold(
+        appBar: widget.showAppBar ? _simpleAppBar(context) : null,
+        body: const GuestViewPlaceholder(
           title: "Planes Nutricionales",
           description:
               "Suscríbete por solo \$9.99 al mes para obtener planes personalizados, exportación a PDF y seguimiento avanzado.\n\nInicia sesión para comenzar",
@@ -382,6 +384,7 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: widget.showAppBar ? _simpleAppBar(context) : null,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -726,6 +729,7 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: widget.showAppBar ? _simpleAppBar(context) : null,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(30),
@@ -769,12 +773,12 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
                     const SizedBox(height: 30),
                     const Divider(),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       '\$9.99 / mes',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.nutveDarkGreen,
+                        color: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -783,8 +787,8 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
                       height: 55,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.nutveDarkGreen,
-                          foregroundColor: Colors.white,
+                          backgroundColor: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
+                          foregroundColor: isDark ? Colors.black : Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
@@ -817,6 +821,22 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  PreferredSizeWidget _simpleAppBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: Icon(
+          Icons.arrow_back_ios_new,
+          color: isDark ? Colors.white : Colors.black,
+          size: 20,
+        ),
+        onPressed: () => Navigator.pop(context),
+      ),
+    );
   }
 }
 

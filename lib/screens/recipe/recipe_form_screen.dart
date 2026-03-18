@@ -8,6 +8,7 @@ import 'package:kooki/models/recipe_model.dart';
 import 'package:kooki/widgets/ingredient_selector.dart';
 import 'package:kooki/models/ingredient_master.dart';
 import 'package:kooki/utils/app_colors.dart';
+import 'package:kooki/services/image_service.dart';
 
 class RecipeFormScreen extends StatefulWidget {
   final Recipe? recipe;
@@ -87,15 +88,16 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
     );
 
     if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _selectedImageBytes = bytes;
-        _selectedFileName = image.name;
-      });
+      final compressedBytes = await ImageService().compressRecipeImage(image);
+      if (compressedBytes != null) {
+        setState(() {
+          _selectedImageBytes = compressedBytes;
+          _selectedFileName = 'recipe_${DateTime.now().millisecondsSinceEpoch}.webp';
+        });
+      }
     }
   }
 

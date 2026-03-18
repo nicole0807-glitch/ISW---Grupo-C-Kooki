@@ -1,11 +1,9 @@
 // ignore_for_file: unused_local_variable, unused_element
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:kooki/screens/Profile/diet_preferences_screen.dart';
 import 'package:kooki/screens/Profile/personal_info_screen.dart';
-import 'package:kooki/services/supabase_service.dart';
 // Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
@@ -63,46 +61,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // --- CARGA DE DATOS ---
 
-  Future<void> _pickAndUploadAvatar() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 50,
-    );
-
-    if (pickedFile == null) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final bytes = await pickedFile.readAsBytes();
-      final error = await _profileService.updateAvatar(bytes);
-
-      if (error == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("¡Foto de perfil actualizada!")),
-        );
-        // Recargar datos
-        setState(() {
-          _profileFuture = _profileService.getProfileData();
-        });
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $error"), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   // MÉTODO PARA REINICIAR / REFRESCAR DATOS (HU-27)
   Future<void> _refreshGoals(BuildContext context) async {
     await Navigator.push(
@@ -128,12 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await authController.logout();
       homeController.clearStatus();
 
-      // 1. Ejecutar logout en Supabase
-      context.read<HomeController>().clearStatus();
-
-      // 2. Sign out de Supabase
-      final supabaseService = SupabaseService();
-      await supabaseService.signOut();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -209,6 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : Colors.white,
         body: Consumer<GoalController>(
           builder: (context, goalController, _) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             if (_isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -280,14 +233,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               },
                             ),
 
-                            // OPCIONES DE CONFIGURACIÓN
-                            const Text(
-                              "Configuración",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            _buildSectionHeader(
+                              title: "Configuración",
+                              onAction: null,
                             ),
+                            const SizedBox(height: 10),
 
                             // Botón de información personal
                             _buildMenuButton(
@@ -310,23 +260,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 });
                               },
                             ),
-
-                            const SizedBox(height: 15),
                             _buildMenuButton(
                               text: "Gestionar Suscripción",
                               icon: Icons.star_outline,
                               baseColor: Colors.green,
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const PremiumPlanScreen(),
-                                  ),
-                                );
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PremiumPlanScreen(showAppBar: true),
+                                    ),
+                                  );
                               },
                             ),
-
-                            const SizedBox(height: 10),
                             _buildMenuButton(
                               text: context.watch<ThemeController>().isDarkMode
                                   ? "Modo Claro"
@@ -343,7 +290,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildMenuButton(
                               text: "Gestión de Tutorial",
                               icon: Icons.help_outline_rounded,
-                              baseColor: AppColors.nutveDarkGreen,
+                              baseColor: isDark 
+                                  ? AppColors.nutveSelectionGreen 
+                                  : AppColors.nutveDarkGreen,
                               onTap: () {
                                 // Trigger the tour in MainLayout
                                 context
@@ -417,32 +366,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? const Icon(Icons.person, size: 50, color: Colors.grey)
                       : null,
                 ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: _pickAndUploadAvatar,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF13EC5B),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.edit,
-                        size: 18,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -462,7 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSectionHeader({
     required String title,
-    required VoidCallback onAction,
+    VoidCallback? onAction,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -471,10 +394,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        IconButton(
-          icon: const Icon(Icons.settings_outlined, color: Colors.blueAccent),
-          onPressed: onAction,
-        ),
+        if (onAction != null)
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.blueAccent),
+            onPressed: onAction,
+          ),
       ],
     );
   }
@@ -528,22 +452,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    "Renovación Automática",
-                    style: TextStyle(fontWeight: FontWeight.w500),
+            if (active) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      "Renovación Automática",
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ),
-                ),
-                Switch(
-                  value: premium.autoRenewEnabled,
-                  onChanged: (value) =>
-                      context.read<PremiumController>().setAutoRenew(value),
-                ),
-              ],
-            ),
+                  Switch(
+                    value: premium.autoRenewEnabled,
+                    onChanged: (value) =>
+                        context.read<PremiumController>().setAutoRenew(value),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -555,7 +481,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.only(top: 15),
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFF13EC5B), width: 1.5),
+          side: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.nutveSelectionGreen
+                : const Color(0xFF13EC5B),
+            width: 1.5,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -605,7 +536,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListTile(
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+        contentPadding: const EdgeInsets.only(left: 12, right: 16, top: 4, bottom: 4),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../utils/app_colors.dart';
 import '../../../controllers/pantry_controller.dart';
 
 class CategoryChips extends StatelessWidget {
@@ -35,7 +36,7 @@ class CategoryChips extends StatelessWidget {
                   }
                 },
                 backgroundColor: chipBg,
-                selectedColor: const Color(0xFF4CAF50),
+                selectedColor: AppColors.nutveSelectionGreen,
                 labelStyle: TextStyle(
                   color: isSelected
                       ? Colors.white
@@ -45,7 +46,7 @@ class CategoryChips extends StatelessWidget {
                 ),
                 side: BorderSide(
                   color: isSelected
-                      ? const Color(0xFF4CAF50)
+                      ? AppColors.nutveSelectionGreen
                       : (isDark ? Colors.white24 : Colors.grey[300]!),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),

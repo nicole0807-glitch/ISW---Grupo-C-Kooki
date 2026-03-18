@@ -178,7 +178,7 @@ class MainLayoutState extends State<MainLayout> {
   Widget build(BuildContext context) {
     final themeCtrl = context.watch<ThemeController>();
     final isDark = themeCtrl.isDarkMode;
-    final navBg = isDark ? const Color(0xFF1A2A1D) : AppColors.nutveDarkGreen;
+    final navBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
 
     return Scaffold(
       extendBody: false,
@@ -399,8 +399,8 @@ class MainLayoutState extends State<MainLayout> {
         color: navBg,
         boxShadow: [
           BoxShadow(
-            color: AppColors.nutveDarkGreen.withOpacity(isDark ? 0.5 : 0.3),
-            blurRadius: 20,
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+            blurRadius: 15,
             offset: const Offset(0, -4),
           ),
         ],
@@ -409,9 +409,39 @@ class MainLayoutState extends State<MainLayout> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_navItems.length, (i) => _buildNavItem(i)),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final segmentWidth = constraints.maxWidth / _navItems.length;
+              const bubbleWidth = 56.0;
+              final leftOffset =
+                  (_selectedIndex * segmentWidth) + (segmentWidth / 2) - (bubbleWidth / 2);
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Burbuja animada de fondo que desliza entre solapas (MatchedGeometryEffect type)
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                    left: leftOffset,
+                    top: 0,
+                    child: Container(
+                      width: bubbleWidth,
+                      height: 36, // Coincide con la altura estática del ícono
+                      decoration: BoxDecoration(
+                        color: AppColors.nutveSelectionGreen.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  // Fila de items interactivos encima
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: List.generate(_navItems.length, (i) => _buildNavItem(i)),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -419,10 +449,11 @@ class MainLayoutState extends State<MainLayout> {
   }
 
   Widget _buildNavItem(int index) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = _selectedIndex == index;
     final item = _navItems[index];
     const selectedColor = AppColors.nutveSelectionGreen;
-    final unselectedColor = Colors.white.withOpacity(0.55);
+    final unselectedColor = isDark ? Colors.white38 : Colors.grey.shade500;
 
     return Expanded(
       child: GestureDetector(
@@ -433,27 +464,18 @@ class MainLayoutState extends State<MainLayout> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Píldora con icono
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 16 : 10,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.nutveSelectionGreen.withOpacity(0.2)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Icon(
-                  isSelected ? item.activeIcon : item.icon,
-                  key: ValueKey(isSelected),
-                  size: isSelected ? 26 : 22,
-                  color: isSelected ? selectedColor : unselectedColor,
+            // Contenedor estático para mantener el alto del ícono y alinear la burbuja
+            SizedBox(
+              height: 36,
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: Icon(
+                    isSelected ? item.activeIcon : item.icon,
+                    key: ValueKey(isSelected),
+                    size: isSelected ? 26 : 22,
+                    color: isSelected ? selectedColor : unselectedColor,
+                  ),
                 ),
               ),
             ),
