@@ -13,6 +13,8 @@ import '../../services/goal_service.dart';
 import '../../services/recipe_service.dart';
 import '../../utils/app_colors.dart';
 import '../recipe/recipe_detail_screen.dart';
+import '../../controllers/auth_controller.dart';
+import '../../widgets/guest_view_placeholder.dart';
 
 enum _MealSlot { breakfast, lunch, snack, dinner }
 
@@ -359,6 +361,17 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!AuthController().hasSession()) {
+      return const Scaffold(
+        body: GuestViewPlaceholder(
+          title: "Planes Nutricionales",
+          description:
+              "Suscríbete por solo \$9.99 al mes para obtener planes personalizados, exportación a PDF y seguimiento avanzado.\n\nInicia sesión para comenzar",
+          icon: Icons.auto_awesome_mosaic_outlined,
+        ),
+      );
+    }
+
     if (!_hasPaid) {
       return _buildMockPaymentGate();
     }

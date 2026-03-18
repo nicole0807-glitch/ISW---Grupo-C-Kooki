@@ -166,259 +166,278 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : AppColors.nutveBgGray;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0B2016), Color(0xFF1B4332), Color(0xFF2D6A4F)],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeIn,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  // Header
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
+      backgroundColor: bgColor,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeIn,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    // Logo / Icon (Fuera de la tarjeta)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.nutveSelectionGreen.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.nutveSelectionGreen.withOpacity(0.5),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.restaurant_rounded,
+                        color: AppColors.nutveSelectionGreen,
+                        size: 40,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "Crea tu cuenta",
+                      style: TextStyle(
+                        color: isDark
+                            ? AppColors.nutveSelectionGreen
+                            : AppColors.nutveDarkGreen,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    if (isDark) // Adjustment for dark mode visibility
+                      const Text(
+                        "Únete a la comunidad Kooki",
+                        style: TextStyle(
                           color: Colors.white70,
+                          fontSize: 15,
                         ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Logo / Icon
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.nutveSelectionGreen.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.nutveSelectionGreen.withOpacity(0.5),
-                        width: 2,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.restaurant_rounded,
-                      color: AppColors.nutveSelectionGreen,
-                      size: 40,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Crea tu cuenta",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    "Únete a la comunidad Kooki",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.65),
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  // Avatar picker
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Stack(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.nutveSelectionGreen,
-                              width: 3,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.nutveSelectionGreen
-                                    .withOpacity(0.3),
-                                blurRadius: 20,
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 52,
-                            backgroundColor: Colors.white12,
-                            backgroundImage: _imageBytes != null
-                                ? MemoryImage(_imageBytes!)
-                                : null,
-                            child: _imageBytes == null
-                                ? const Icon(
-                                    Icons.person_rounded,
-                                    size: 55,
-                                    color: Colors.white54,
-                                  )
-                                : null,
-                          ),
+                      )
+                    else
+                      Text(
+                        "Únete a la comunidad Kooki",
+                        style: TextStyle(
+                          color: Colors.black.withOpacity(0.65),
+                          fontSize: 15,
                         ),
-                        Positioned(
-                          bottom: 2,
-                          right: 2,
-                          child: Container(
-                            padding: const EdgeInsets.all(7),
+                      ),
+                    const SizedBox(height: 35),
+
+                    // Avatar picker
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Stack(
+                        children: [
+                          Container(
                             decoration: BoxDecoration(
-                              color: AppColors.nutveSelectionGreen,
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.nutveSelectionGreen,
+                                width: 3,
+                              ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 6,
+                                  color: AppColors.nutveSelectionGreen.withOpacity(0.3),
+                                  blurRadius: 20,
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.black,
-                              size: 16,
+                            child: CircleAvatar(
+                              radius: 52,
+                              backgroundColor: isDark ? Colors.white10 : Colors.white,
+                              backgroundImage: _imageBytes != null
+                                  ? MemoryImage(_imageBytes!)
+                                  : null,
+                              child: _imageBytes == null
+                                  ? Icon(
+                                      Icons.person_rounded,
+                                      size: 55,
+                                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                                    )
+                                  : null,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Toca para elegir foto",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  // Form card
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildField(
-                          "Nombre completo",
-                          Icons.badge_rounded,
-                          _nameController,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          "Usuario único",
-                          Icons.alternate_email_rounded,
-                          _userController,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          "Correo electrónico",
-                          Icons.email_rounded,
-                          _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          "Contraseña",
-                          Icons.lock_rounded,
-                          _passController,
-                          isPass: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  // Submit button
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: CircularProgressIndicator(
-                              color: AppColors.nutveSelectionGreen,
-                              strokeWidth: 3,
-                            ),
-                          )
-                        : GestureDetector(
-                            onTap: _signUp,
+                          Positioned(
+                            bottom: 2,
+                            right: 2,
                             child: Container(
-                              width: double.infinity,
-                              height: 58,
+                              padding: const EdgeInsets.all(7),
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF14E85C),
-                                    Color(0xFF0DCF4D),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(18),
+                                color: AppColors.nutveSelectionGreen,
+                                shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(
-                                      0xFF14E85C,
-                                    ).withOpacity(0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 6,
                                   ),
                                 ],
                               ),
-                              child: const Center(
-                                child: Text(
-                                  "CREAR CUENTA",
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.0,
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.black,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Toca para elegir foto",
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.grey.shade500,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 35),
+
+                    // Form card (Sólida)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                            blurRadius: 30,
+                            offset: const Offset(0, 15),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _buildField(
+                            "Nombre completo",
+                            Icons.badge_rounded,
+                            _nameController,
+                            isDark,
+                          ),
+                          const SizedBox(height: 14),
+                          _buildField(
+                            "Usuario único",
+                            Icons.alternate_email_rounded,
+                            _userController,
+                            isDark,
+                          ),
+                          const SizedBox(height: 14),
+                          _buildField(
+                            "Correo electrónico",
+                            Icons.email_rounded,
+                            _emailController,
+                            isDark,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 14),
+                          _buildField(
+                            "Contraseña",
+                            Icons.lock_rounded,
+                            _passController,
+                            isDark,
+                            isPass: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 35),
+
+                    // Submit button
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: CircularProgressIndicator(
+                                color: AppColors.nutveSelectionGreen,
+                                strokeWidth: 3,
+                              ),
+                            )
+                          : GestureDetector(
+                              onTap: _signUp,
+                              child: Container(
+                                width: double.infinity,
+                                height: 58,
+                                decoration: BoxDecoration(
+                                  color: AppColors.nutveSelectionGreen,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.nutveSelectionGreen.withOpacity(0.4),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    "CREAR CUENTA",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.0,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "¿Ya tienes cuenta? ",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 14,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Text(
-                          "Iniciar sesión",
+                    ),
+                    const SizedBox(height: 25),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "¿Ya tienes cuenta? ",
                           style: TextStyle(
-                            color: AppColors.nutveSelectionGreen,
-                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white60 : Colors.black45,
                             fontSize: 14,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Text(
+                            "Iniciar sesión",
+                            style: TextStyle(
+                              color: isDark ? Colors.white : AppColors.nutveDarkGreen,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+
+          // Botón para volver (Estilo Receta)
+          Positioned(
+            top: 50,
+            left: 20,
+            child: CircleAvatar(
+              backgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 20,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -426,50 +445,53 @@ class _RegisterScreenState extends State<RegisterScreen>
   Widget _buildField(
     String label,
     IconData icon,
-    TextEditingController controller, {
+    TextEditingController controller,
+    bool isDark, {
     bool isPass = false,
     TextInputType? keyboardType,
   }) {
-    return TextField(
-      controller: controller,
-      obscureText: isPass && _obscurePass,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withOpacity(0.55)),
-        prefixIcon: Icon(icon, color: AppColors.nutveSelectionGreen, size: 20),
-        suffixIcon: isPass
-            ? IconButton(
-                icon: Icon(
-                  _obscurePass
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
-                  color: Colors.white38,
-                  size: 20,
-                ),
-                onPressed: () => setState(() => _obscurePass = !_obscurePass),
-              )
-            : null,
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.07),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade200,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPass && _obscurePass,
+        keyboardType: keyboardType,
+        style: TextStyle(
+          color: isDark ? Colors.white : Colors.black87,
+          fontSize: 15,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: isDark ? Colors.white38 : Colors.grey.shade600,
+          ),
+          prefixIcon: Icon(
+            icon,
             color: AppColors.nutveSelectionGreen,
-            width: 1.5,
+            size: 20,
+          ),
+          suffixIcon: isPass
+              ? IconButton(
+                  icon: Icon(
+                    _obscurePass
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: isDark ? Colors.white38 : Colors.grey,
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
       ),

@@ -6,6 +6,9 @@ import 'shopping_list_screen.dart';
 import 'add_ingredient_screen.dart';
 import 'widgets/ingredient_card.dart';
 import 'widgets/category_chips.dart';
+import '../../controllers/auth_controller.dart';
+import '../auth/login_screen.dart';
+import '../../widgets/guest_view_placeholder.dart';
 
 class PantryScreen extends StatefulWidget {
   const PantryScreen({super.key});
@@ -26,9 +29,15 @@ class _PantryScreenState extends State<PantryScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasSession = AuthController().hasSession();
+
+    if (!hasSession) {
+      return _buildGuestView(isDark);
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      // ... resto del código del Scaffold original ...
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
@@ -213,6 +222,31 @@ class _PantryScreenState extends State<PantryScreen> {
             letterSpacing: 1.2,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGuestView(bool isDark) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        title: Text(
+          'Tu Despensa',
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        automaticallyImplyLeading: false,
+      ),
+      body: const GuestViewPlaceholder(
+        title: "Gestiona tu cocina",
+        description:
+            "Inicia sesión para llevar el control de tus ingredientes, ver sus fechas de vencimiento y recibir recomendaciones personalizadas.",
+        icon: Icons.inventory_2_outlined,
       ),
     );
   }

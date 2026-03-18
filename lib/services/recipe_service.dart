@@ -29,7 +29,7 @@ class RecipeService {
           .toList();
     } catch (e) {
       print('Error fetching community: $e');
-      return [];
+      rethrow;
     }
   }
 

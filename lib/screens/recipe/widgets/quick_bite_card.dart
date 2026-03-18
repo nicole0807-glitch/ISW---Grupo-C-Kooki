@@ -51,20 +51,33 @@ class QuickBiteCard extends StatelessWidget {
               tag: 'bite_${recipe.id}',
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(18),
-                child: recipe.imageUrl != null
+                child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
                     ? Image.network(
                         recipe.imageUrl!,
                         width: 85,
                         height: 85,
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 85,
+                          height: 85,
+                          alignment: Alignment.center,
+                          color: isDark ? Colors.white10 : Colors.grey.shade100,
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: isDark ? Colors.white24 : Colors.grey.shade400,
+                            size: 30,
+                          ),
+                        ),
                       )
                     : Container(
                         width: 85,
                         height: 85,
-                        color: Colors.grey[100],
-                        child: const Icon(
-                          Icons.restaurant_rounded,
-                          color: Colors.grey,
+                        alignment: Alignment.center,
+                        color: isDark ? Colors.white10 : Colors.grey.shade100,
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: isDark ? Colors.white24 : Colors.grey.shade400,
+                          size: 30,
                         ),
                       ),
               ),

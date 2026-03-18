@@ -8,6 +8,8 @@ import '../../services/admin_service.dart';
 import '../../controllers/pantry_controller.dart';
 import '../../controllers/shopping_list_controller.dart';
 import '../../models/recipe_model.dart';
+import '../../controllers/auth_controller.dart';
+import '../auth/login_screen.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final Recipe recipe;
@@ -389,67 +391,69 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               ),
             ),
             actions: [
-              // Botón ME GUSTA (Corazón)
-              CircleAvatar(
-                backgroundColor: Colors.white,
-                child: IconButton(
-                  icon: Icon(
-                    isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: isFavorite ? Colors.redAccent : Colors.black54,
-                  ),
-                  onPressed: () {
-                    favorites.toggleFavorite(widget.recipe.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isFavorite
-                              ? "Ya no te gusta esta receta"
-                              : "¡Te gusta esta receta!",
+              if (AuthController().hasSession()) ...[
+                // Botón ME GUSTA (Corazón)
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.redAccent : Colors.black54,
+                    ),
+                    onPressed: () {
+                      favorites.toggleFavorite(widget.recipe.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isFavorite
+                                ? "Ya no te gusta esta receta"
+                                : "¡Te gusta esta receta!",
+                          ),
+                          duration: const Duration(milliseconds: 1500),
                         ),
-                        duration: const Duration(milliseconds: 1500),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Botón GUARDAR (Bookmark)
-              CircleAvatar(
-                backgroundColor: Colors.white,
-                child: IconButton(
-                  icon: Icon(
-                    isFavorite ? Icons.bookmark : Icons.bookmark_border,
-                    color: isFavorite
-                        ? AppColors.nutveSelectionGreen
-                        : Colors.black54,
+                      );
+                    },
                   ),
-                  onPressed: () {
-                    favorites.toggleFavorite(widget.recipe.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isFavorite
-                              ? "Receta eliminada de guardados"
-                              : "Receta guardada en tu perfil",
+                ),
+                const SizedBox(width: 8),
+                // Botón GUARDAR (Bookmark)
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.bookmark : Icons.bookmark_border,
+                      color: isFavorite
+                          ? AppColors.nutveSelectionGreen
+                          : Colors.black54,
+                    ),
+                    onPressed: () {
+                      favorites.toggleFavorite(widget.recipe.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isFavorite
+                                ? "Receta eliminada de guardados"
+                                : "Receta guardada en tu perfil",
+                          ),
+                          duration: const Duration(milliseconds: 1500),
                         ),
-                        duration: const Duration(milliseconds: 1500),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              CircleAvatar(
-                backgroundColor: Colors.white,
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.report_problem_outlined,
-                    color: Colors.orange,
+                      );
+                    },
                   ),
-                  onPressed: _showReportDialog,
                 ),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.gavel,
+                      color: Colors.red,
+                    ),
+                    onPressed: _showReportDialog,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               CircleAvatar(
                 backgroundColor: Colors.white,
                 child: IconButton(
@@ -460,9 +464,29 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               const SizedBox(width: 15),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: widget.recipe.imageUrl != null
-                  ? Image.network(widget.recipe.imageUrl!, fit: BoxFit.cover)
-                  : Container(color: Colors.grey[200]),
+              background: widget.recipe.imageUrl != null && widget.recipe.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      widget.recipe.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        alignment: Alignment.center,
+                        color: isDark ? Colors.white10 : Colors.grey.shade100,
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: isDark ? Colors.white24 : Colors.grey.shade400,
+                          size: 60,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      alignment: Alignment.center,
+                      color: isDark ? Colors.white10 : Colors.grey.shade100,
+                      child: Icon(
+                        Icons.image_outlined,
+                        color: isDark ? Colors.white24 : Colors.grey.shade400,
+                        size: 60,
+                      ),
+                    ),
             ),
           ),
 
@@ -479,8 +503,53 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título y Rating
-                  StreamBuilder<List<Map<String, dynamic>>>(
+                  // Título siempre visible
+                  Text(
+                    widget.recipe.title,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF1B4332),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Perfil del Autor siempre visible (pero sin botón de seguir para invitados)
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      radius: 25,
+                      backgroundImage: NetworkImage(
+                        "https://via.placeholder.com/150",
+                      ),
+                    ),
+                    title: const Text(
+                      "Dra. Sarah Jenkins",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text(
+                      "Nutricionista Principal • Receta Premium",
+                    ),
+                    trailing: AuthController().hasSession()
+                        ? TextButton(
+                            onPressed: () {},
+                            child: const Text(
+                              "SEGUIR",
+                              style: TextStyle(
+                                color: AppColors.nutveSelectionGreen,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  const Divider(),
+
+                  if (!AuthController().hasSession()) _buildGuestLockedContent(isDark),
+                  if (AuthController().hasSession()) ...[
+                    // Rating solo para logueados
+                    StreamBuilder<List<Map<String, dynamic>>>(
                     stream: supabase
                         .from('recipe_ratings')
                         .stream(primaryKey: ['id'])
@@ -539,46 +608,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       );
                     },
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.recipe.title,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF1B4332),
-                    ),
-                  ),
-
-                  // Perfil del Autor (Mockup según Figma)
-                  const SizedBox(height: 20),
-                  const Divider(),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(
-                      radius: 25,
-                      backgroundImage: NetworkImage(
-                        "https://via.placeholder.com/150",
-                      ),
-                    ),
-                    title: const Text(
-                      "Dra. Sarah Jenkins",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: const Text(
-                      "Nutricionista Principal • Receta Premium",
-                    ),
-                    trailing: TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        "SEGUIR",
-                        style: TextStyle(
-                          color: AppColors.nutveSelectionGreen,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Divider(),
 
                   // Stats (Duración, Costo, Dificultad)
                   const SizedBox(height: 20),
@@ -647,14 +676,17 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
                   const SizedBox(height: 100), // Espacio para el botón flotante
                 ],
-              ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    ),
 
-      // Botón EMPEZAR A COCINAR fijo
-      bottomSheet: Container(
+      // Botón EMPEZAR A COCINAR fijo (Solo si hay sesión)
+      bottomSheet: !AuthController().hasSession()
+          ? null
+          : Container(
         padding: const EdgeInsets.all(20),
         color: isDark
             ? const Color(0xFF1A1A1A).withOpacity(0.95)
@@ -733,6 +765,71 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGuestLockedContent(bool isDark) {
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.grey.shade200,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.lock_person_rounded,
+                size: 60,
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Contenido Protegido',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Inicia sesión para ver la receta completa, ingredientes, pasos y valor nutricional.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.grey.shade600,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveSelectionGreen,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 55),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                ),
+                child: const Text(
+                  "INICIAR SESIÓN",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 40),
+      ],
     );
   }
 

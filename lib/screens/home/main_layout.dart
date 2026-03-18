@@ -13,6 +13,7 @@ import '../assistant/assistant_screen.dart';
 import '../plan/premium_plan_screen.dart';
 import '../notifications/notifications_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../controllers/auth_controller.dart';
 
 // ─── DATA CLASS PARA ITEMS DE NAV ─────────────────────────────────────────────
 class _NavItem {
@@ -304,7 +305,7 @@ class MainLayoutState extends State<MainLayout> {
             backgroundImage: AssetImage('assets/logo.png'),
           ),
           const SizedBox(width: 12),
-          _buildAiBubble(),
+          if (AuthController().hasSession()) _buildAiBubble(),
         ],
       ),
       actions: [
@@ -385,7 +386,7 @@ class MainLayoutState extends State<MainLayout> {
           ),
         ),
         // ── Campana de Notificaciones ──────────────────────────────────
-        _buildNotificationIcon(),
+        if (AuthController().hasSession()) _buildNotificationIcon(),
         const SizedBox(width: 6),
       ],
     );

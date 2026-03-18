@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/recipe_model.dart';
 import '../../services/recipe_service.dart';
 import '../../utils/app_colors.dart';
+import '../recipe/recipe_detail_screen.dart';
 
 enum RecipeSearchSort { recent, alphabetical }
 
@@ -33,7 +34,13 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    _recipesFuture = _recipeService.fetchRecipes();
+    _loadRecipes();
+  }
+
+  void _loadRecipes() {
+    setState(() {
+      _recipesFuture = _recipeService.fetchRecipes();
+    });
   }
 
   List<Recipe> _filterAndSort(List<Recipe> recipes) {
@@ -367,8 +374,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   );
                 }
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error al cargar recetas: ${snapshot.error}'),
+                  return _buildErrorState(
+                    'No se pudieron cargar las recetas.',
+                    _loadRecipes,
                   );
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -558,138 +566,199 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildModernRecipeTile(Recipe recipe) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-        border: Border.all(
-          color: isDark ? Colors.transparent : Colors.grey.shade50,
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RecipeDetailScreen(recipe: recipe),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
-                  ? Image.network(
-                      recipe.imageUrl!,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 80,
-                        height: 80,
-                        color: isDark ? Colors.white10 : Colors.grey.shade100,
-                        child: Icon(
-                          Icons.broken_image_rounded,
-                          color: isDark
-                              ? Colors.grey.shade600
-                              : Colors.grey.shade400,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      width: 80,
-                      height: 80,
-                      color: isDark ? Colors.white10 : Colors.grey.shade100,
-                      child: Icon(
-                        Icons.restaurant_rounded,
-                        color: isDark ? Colors.grey.shade600 : Colors.grey,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    recipe.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    recipe.ingredients.map((i) => i.name).take(3).join(', '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isDark
-                          ? Colors.grey.shade400
-                          : Colors.grey.shade500,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 14,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          "${recipe.cookingTime} min",
-                          style: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 14,
-                              color: Colors.amber,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              recipe.rating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                color: Colors.amber,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
+          border: Border.all(
+            color: isDark ? Colors.transparent : Colors.grey.shade50,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
+                    ? Image.network(
+                        recipe.imageUrl!,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 80,
+                          height: 80,
+                          alignment: Alignment.center,
+                          color: isDark ? Colors.white10 : Colors.grey.shade100,
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: isDark
+                                ? Colors.white24
+                                : Colors.grey.shade400,
+                            size: 30,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        width: 80,
+                        height: 80,
+                        alignment: Alignment.center,
+                        color: isDark ? Colors.white10 : Colors.grey.shade100,
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: isDark
+                              ? Colors.white24
+                              : Colors.grey.shade400,
+                          size: 30,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recipe.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      recipe.ingredients.map((i) => i.name).take(3).join(', '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade500,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 14,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            "${recipe.cookingTime} min",
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 14,
+                                color: Colors.amber,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                recipe.rating.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  color: Colors.amber,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message, VoidCallback onRetry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 64,
+              color: isDark ? Colors.white24 : Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.nutveSelectionGreen,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text(
+                "Intentar de nuevo",
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],

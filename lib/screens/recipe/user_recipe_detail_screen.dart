@@ -9,6 +9,8 @@ import '../../controllers/shopping_list_controller.dart'; // Added ShoppingListC
 import '../../models/user_recipe_model.dart';
 import '../../services/admin_service.dart';
 import '../../utils/app_colors.dart';
+import '../../controllers/auth_controller.dart';
+import '../auth/login_screen.dart';
 
 class UserRecipeDetailScreen extends StatefulWidget {
   final UserRecipe recipe;
@@ -436,15 +438,20 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
       length: 3,
       child: Scaffold(
         backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _startCooking,
-          backgroundColor: AppColors.nutveSelectionGreen,
-          icon: const Icon(Icons.restaurant_rounded, color: Colors.black),
-          label: const Text(
-            "¡EMPEZAR A COCINAR!",
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
+        floatingActionButton: !AuthController().hasSession()
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: _startCooking,
+                backgroundColor: AppColors.nutveSelectionGreen,
+                icon: const Icon(Icons.restaurant_rounded, color: Colors.black),
+                label: const Text(
+                  "¡EMPEZAR A COCINAR!",
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -453,30 +460,99 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
           body: Column(
             children: [
               _buildRecipeSummary(isDark),
-              TabBar(
-                labelColor: isDark
-                    ? AppColors.nutveSelectionGreen
-                    : AppColors.nutveDarkGreen,
-                unselectedLabelColor: isDark
-                    ? Colors.grey.shade600
-                    : Colors.grey,
-                indicatorColor: isDark
-                    ? AppColors.nutveSelectionGreen
-                    : AppColors.nutveDarkGreen,
-                indicatorWeight: 3,
-                tabs: const [
-                  Tab(text: "Ingredientes"),
-                  Tab(text: "Pasos"),
-                  Tab(text: "Opiniones"),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _buildIngredientsList(isDark),
-                    _buildStepsList(isDark),
-                    _buildCommentsSection(isDark),
+              if (!AuthController().hasSession())
+                _buildGuestLockedContent(isDark)
+              else ...[
+                TabBar(
+                  labelColor: isDark
+                      ? AppColors.nutveSelectionGreen
+                      : AppColors.nutveDarkGreen,
+                  unselectedLabelColor: isDark
+                      ? Colors.grey.shade600
+                      : Colors.grey,
+                  indicatorColor: isDark
+                      ? AppColors.nutveSelectionGreen
+                      : AppColors.nutveDarkGreen,
+                  indicatorWeight: 3,
+                  tabs: const [
+                    Tab(text: "Ingredientes"),
+                    Tab(text: "Pasos"),
+                    Tab(text: "Opiniones"),
                   ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _buildIngredientsList(isDark),
+                      _buildStepsList(isDark),
+                      _buildCommentsSection(isDark),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestLockedContent(bool isDark) {
+    return Expanded(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Container(
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.grey.shade200,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.lock_person_rounded,
+                size: 60,
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Receta Protegida',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Inicia sesión para ver los ingredientes, pasos y comentarios de la comunidad.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.grey.shade600,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveSelectionGreen,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 55),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                ),
+                child: const Text(
+                  "INICIAR SESIÓN",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
             ],
@@ -540,48 +616,65 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
           ),
         ),
         // Botón GUARDAR
-        Padding(
-          padding: const EdgeInsets.only(right: 8.0),
-          child: CircleAvatar(
-            backgroundColor: isDark ? Colors.black54 : Colors.white,
-            child: Consumer<FavoritesController>(
-              builder: (context, favorites, child) {
-                final isFav = favorites.isFavorite(widget.recipe.id);
-                return IconButton(
-                  icon: Icon(
-                    isFav ? Icons.bookmark : Icons.bookmark_border,
-                    color: isFav
-                        ? AppColors.nutveSelectionGreen
-                        : (isDark ? Colors.white : Colors.black),
-                  ),
-                  onPressed: () {
-                    favorites.toggleFavorite(widget.recipe.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isFav
-                              ? "Receta removida de guardados"
-                              : "Receta guardada en tu perfil",
+        if (AuthController().hasSession()) ...[
+          // Botón GUARDAR (Bookmark)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: CircleAvatar(
+              backgroundColor: isDark ? Colors.black54 : Colors.white,
+              child: Consumer<FavoritesController>(
+                builder: (context, favorites, child) {
+                  final isFav = favorites.isFavorite(widget.recipe.id);
+                  return IconButton(
+                    icon: Icon(
+                      isFav ? Icons.bookmark : Icons.bookmark_border,
+                      color: isFav
+                          ? AppColors.nutveSelectionGreen
+                          : (isDark ? Colors.white : Colors.black),
+                    ),
+                    onPressed: () {
+                      favorites.toggleFavorite(widget.recipe.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isFav
+                                ? "Receta removida de guardados"
+                                : "Receta guardada en tu perfil",
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ),
-        ),
-        // Botón REPORTAR
+          // Botón REPORTAR (Gavel)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: CircleAvatar(
+              backgroundColor: isDark ? Colors.black54 : Colors.white,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.gavel,
+                  color: Colors.red,
+                ),
+                onPressed: () => _showReportDialog(context),
+              ),
+            ),
+          ),
+        ],
+        // Botón COMPARTIR (Siempre visible)
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: CircleAvatar(
             backgroundColor: isDark ? Colors.black54 : Colors.white,
             child: IconButton(
-              icon: const Icon(
-                Icons.report_problem_outlined,
-                color: Colors.orange,
+              icon: Icon(
+                Icons.share,
+                color: isDark ? Colors.white : Colors.black,
               ),
-              onPressed: () => _showReportDialog(context),
+              onPressed: () {},
             ),
           ),
         ),
@@ -591,7 +684,19 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
             ? Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(widget.recipe.imageUrl, fit: BoxFit.cover),
+                  Image.network(
+                    widget.recipe.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      alignment: Alignment.center,
+                      color: isDark ? Colors.white10 : Colors.grey.shade100,
+                      child: Icon(
+                        Icons.image_outlined,
+                        color: isDark ? Colors.white24 : Colors.grey.shade400,
+                        size: 60,
+                      ),
+                    ),
+                  ),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -610,10 +715,12 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
                 ],
               )
             : Container(
-                color: isDark ? Colors.grey[800] : Colors.grey[300],
+                alignment: Alignment.center,
+                color: isDark ? Colors.white10 : Colors.grey.shade100,
                 child: Icon(
-                  Icons.image_not_supported,
-                  color: isDark ? Colors.white54 : Colors.grey,
+                  Icons.image_outlined,
+                  color: isDark ? Colors.white24 : Colors.grey.shade400,
+                  size: 60,
                 ),
               ),
       ),
@@ -653,44 +760,46 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 25),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E20) : Colors.grey[50],
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+          if (AuthController().hasSession()) ...[
+            const SizedBox(height: 25),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E20) : Colors.grey[50],
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _summaryItem(
+                    Icons.bolt,
+                    widget.recipe.difficulty,
+                    "Dificultad",
+                    isDark,
+                  ),
+                  _summaryItem(
+                    Icons.payments_outlined,
+                    widget.recipe.cost,
+                    "Costo",
+                    isDark,
+                  ),
+                  _summaryItem(
+                    Icons.schedule,
+                    widget.recipe.duration,
+                    "Tiempo",
+                    isDark,
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _summaryItem(
-                  Icons.bolt,
-                  widget.recipe.difficulty,
-                  "Dificultad",
-                  isDark,
-                ),
-                _summaryItem(
-                  Icons.payments_outlined,
-                  widget.recipe.cost,
-                  "Costo",
-                  isDark,
-                ),
-                _summaryItem(
-                  Icons.schedule,
-                  widget.recipe.duration,
-                  "Tiempo",
-                  isDark,
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );

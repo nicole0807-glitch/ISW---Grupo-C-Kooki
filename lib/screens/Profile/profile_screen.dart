@@ -12,6 +12,7 @@ import '../../controllers/home_controller.dart';
 import '../../controllers/goal_controller.dart';
 import '../../controllers/premium_controller.dart';
 import '../auth/login_screen.dart';
+import '../auth/welcome_screen.dart';
 import '../../services/profile_service.dart';
 import '../goals/goal_registration_screen.dart';
 import '../recipe/widgets/macro_chart_widget.dart';
@@ -25,6 +26,7 @@ import '../../controllers/theme_controller.dart';
 import 'saved_recipes_screen.dart';
 import '../../utils/app_colors.dart';
 import '../home/main_layout.dart';
+import '../../widgets/guest_view_placeholder.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -122,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await supabaseService.signOut();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
           (route) => false,
         );
       }
@@ -266,41 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             if (goalController.currentGoal == null)
                               _buildSetupButton(() => _refreshGoals(context)),
 
-                            // Botón de información personal
-                            _buildMenuButton(
-                              text: "Información Personal",
-                              icon: Icons.person,
-                              baseColor: Colors.blueAccent,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const PersonalInfoScreen(),
-                                  ),
-                                ).then((_) {
-                                  //Se recarga la página cuando el usuario vuelva
-                                  setState(() {
-                                    _profileFuture = _profileService
-                                        .getProfileData();
-                                  });
-                                });
-                              },
-                            ),
-
-                            const SizedBox(height: 10),
-                            _buildMenuButton(
-                              text: context.watch<ThemeController>().isDarkMode
-                                  ? "Modo Claro"
-                                  : "Modo Oscuro",
-                              icon: context.watch<ThemeController>().isDarkMode
-                                  ? Icons.light_mode
-                                  : Icons.dark_mode,
-                              baseColor: Colors.orangeAccent,
-                              onTap: () {
-                                context.read<ThemeController>().toggleTheme();
-                              },
-                            ),
+                            
 
                             const SizedBox(height: 25),
                             _buildSectionHeader(
@@ -347,6 +315,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+
+                            // Botón de información personal
+                            _buildMenuButton(
+                              text: "Información Personal",
+                              icon: Icons.person,
+                              baseColor: Colors.blueAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const PersonalInfoScreen(),
+                                  ),
+                                ).then((_) {
+                                  //Se recarga la página cuando el usuario vuelva
+                                  setState(() {
+                                    _profileFuture = _profileService
+                                        .getProfileData();
+                                  });
+                                });
+                              },
+                            ),
+
                             const SizedBox(height: 15),
                             _buildMenuButton(
                               text: "Gestionar Suscripción",
@@ -362,6 +353,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               },
                             ),
 
+                            const SizedBox(height: 10),
+                            _buildMenuButton(
+                              text: context.watch<ThemeController>().isDarkMode
+                                  ? "Modo Claro"
+                                  : "Modo Oscuro",
+                              icon: context.watch<ThemeController>().isDarkMode
+                                  ? Icons.light_mode
+                                  : Icons.dark_mode,
+                              baseColor: Colors.orangeAccent,
+                              onTap: () {
+                                context.read<ThemeController>().toggleTheme();
+                              },
+                            ),
+                            
                             _buildMenuButton(
                               text: "Gestión de Tutorial",
                               icon: Icons.help_outline_rounded,
@@ -681,50 +686,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
   Widget _buildGuestView(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.account_circle_outlined,
-                size: 100,
-                color: Colors.grey.shade300,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Guarda tus recetas favoritas y gestiona tu despensa personalizando tu perfil.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54, fontSize: 16),
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF13EC5B),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: const StadiumBorder(),
-                  ),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  ),
-                  child: const Text(
-                    "Iniciar Sesión",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return const Scaffold(
+      body: GuestViewPlaceholder(
+        title: "Tu Perfil",
+        description:
+            "Guarda tus recetas favoritas y gestiona tu despensa personalizando tu perfil.",
       ),
     );
   }

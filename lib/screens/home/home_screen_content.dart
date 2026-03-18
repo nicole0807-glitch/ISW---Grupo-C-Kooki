@@ -16,6 +16,8 @@ import '../recipe/validation_queue_screen.dart';
 import '../recipe/publish_recipe_screen.dart';
 import '../recipe/user_recipe_detail_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
+import '../../controllers/auth_controller.dart';
+import '../auth/login_screen.dart';
 import 'main_layout.dart';
 
 enum HomeRecipeFilter { all, topRated, quickBites, favorites, easy, fast }
@@ -156,7 +158,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeroBanner(),
+              _buildHeroBanner(AuthController().hasSession()),
               const SizedBox(height: 20),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -240,7 +242,12 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (proSnapshot.connectionState ==
+                      if (proSnapshot.hasError)
+                        _buildErrorState(
+                          'No pudimos cargar las recetas. Revisa tu conexión.',
+                          () => setState(() {}),
+                        )
+                      else if (proSnapshot.connectionState ==
                           ConnectionState.waiting)
                         const Center(
                           child: Padding(
@@ -263,7 +270,8 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                               future: _recipeService.fetchCommunityRecipes(),
                               builder: (context, comSnapshot) {
                                 if (comSnapshot.connectionState ==
-                                    ConnectionState.waiting) {
+                                        ConnectionState.waiting ||
+                                    comSnapshot.hasError) {
                                   return const SizedBox();
                                 }
                                 final communityRecipes = comSnapshot.data ?? [];
@@ -302,12 +310,15 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       const SizedBox(height: 40),
                       _buildCommunityHeader(
                         context,
-                        canPublishCommunity: canPublishCommunity,
+                        canPublishCommunity: canPublishCommunity && AuthController().hasSession(),
                       ),
                       const SizedBox(height: 15),
                       FutureBuilder<List<UserRecipe>>(
                         future: _recipeService.fetchCommunityRecipes(),
                         builder: (context, comSnapshot) {
+                          if (comSnapshot.hasError) {
+                            return const SizedBox(); // Silently hide or show minimal error for secondary sections
+                          }
                           if (comSnapshot.connectionState ==
                               ConnectionState.waiting) {
                             return const Center(
@@ -362,6 +373,53 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     );
   }
 
+  Widget _buildErrorState(String message, VoidCallback onRetry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 64,
+              color: isDark ? Colors.white24 : Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.nutveSelectionGreen,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text(
+                "Intentar de nuevo",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildUserRecipeCard(
     BuildContext context,
     UserRecipe recipe,
@@ -411,10 +469,12 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           height: 150,
-                          color: isDark ? Colors.grey[800] : Colors.grey[100],
+                          alignment: Alignment.center,
+                          color: isDark ? Colors.white10 : Colors.grey.shade100,
                           child: Icon(
-                            Icons.broken_image_rounded,
-                            color: isDark ? Colors.white38 : Colors.grey,
+                            Icons.image_outlined,
+                            color: isDark ? Colors.white24 : Colors.grey.shade400,
+                            size: 40,
                           ),
                         ),
                       ),
@@ -621,7 +681,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     );
   }
 
-  Widget _buildHeroBanner() {
+  Widget _buildHeroBanner(bool hasSession) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -669,33 +729,36 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          "NUEVO",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
+                  if (hasSession)
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            "NUEVO",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Desbloquea tu\nMejor Versión',
-                    style: TextStyle(
+                      ],
+                    ),
+                  if (hasSession) const SizedBox(height: 16),
+                  Text(
+                    hasSession
+                        ? 'Desbloquea tu\nMejor Versión'
+                        : 'Cocina de Forma\nInteligente',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 34,
                       fontWeight: FontWeight.w900,
@@ -705,7 +768,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Planes personalizados y recetas únicas.',
+                    hasSession
+                        ? 'Planes personalizados y recetas únicas.'
+                        : 'Organiza tu despensa, ahorra tiempo y descubre cientos de recetas a tu medida.',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 14,
@@ -726,24 +791,33 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       ),
                     ),
                     onPressed: () {
-                      final mainState = context
-                          .findAncestorStateOfType<MainLayoutState>();
-                      if (mainState != null) {
-                        mainState.navigateToPlan();
+                      if (hasSession) {
+                        final mainState = context
+                            .findAncestorStateOfType<MainLayoutState>();
+                        if (mainState != null) {
+                          mainState.navigateToPlan();
+                        }
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                        );
                       }
                     },
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'MEJORAR MI PLAN',
-                          style: TextStyle(
+                          hasSession ? 'MEJORAR MI PLAN' : 'INICIAR SESIÓN',
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, size: 18),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded, size: 18),
                       ],
                     ),
                   ),
@@ -760,9 +834,11 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
         ),
         TextButton(
           onPressed: () {},
@@ -804,30 +880,32 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Builder(
-          builder: (ctx) {
-            final isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Comunidad kooki',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkCtx ? Colors.white : null,
+        Expanded(
+          child: Builder(
+            builder: (ctx) {
+              final isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Comunidad kooki',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkCtx ? Colors.white : null,
+                    ),
                   ),
-                ),
-                Text(
-                  'La mejor inspiración para cocinar',
-                  style: TextStyle(
-                    color: isDarkCtx ? Colors.white54 : Colors.grey,
-                    fontSize: 13,
+                  Text(
+                    'La mejor inspiración para cocinar',
+                    style: TextStyle(
+                      color: isDarkCtx ? Colors.white54 : Colors.grey,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
         if (canPublishCommunity)
           IconButton(
@@ -897,22 +975,77 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       }
     }
 
+    final hasSession = AuthController().hasSession();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 35),
         _buildSectionHeader('Puedes hacer ahora 🥘'),
-        if (canMakeNow.isNotEmpty) ...[
+        if (!hasSession)
+          _buildGuestSectionPlaceholder(
+            "Inicia sesión para ver qué puedes cocinar con lo que tienes en casa.",
+          )
+        else if (canMakeNow.isNotEmpty) ...[
           const SizedBox(height: 15),
           _buildMixedHorizontalList(canMakeNow),
         ],
         const SizedBox(height: 35),
         _buildSectionHeader('Por completar (te falta 1 o 2) 🛒'),
-        if (almostComplete.isNotEmpty) ...[
+        if (!hasSession)
+          _buildGuestSectionPlaceholder(
+            "Descubre qué recetas podrías terminar de preparar con un par de compras.",
+          )
+        else if (almostComplete.isNotEmpty) ...[
           const SizedBox(height: 15),
           _buildMixedHorizontalList(almostComplete),
         ],
       ],
+    );
+  }
+
+  Widget _buildGuestSectionPlaceholder(String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      margin: const EdgeInsets.only(top: 10),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDark ? Colors.white54 : Colors.grey.shade600,
+              fontSize: 13,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            ),
+            child: Text(
+              "Iniciar Sesión",
+              style: TextStyle(
+                color: isDark ? Colors.white24 : Colors.grey.shade400,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
