@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../models/ingredient.dart';
 import '../../../controllers/pantry_controller.dart';
+import '../../../widgets/kooki_remote_image.dart';
 import '../add_ingredient_screen.dart';
 
 class IngredientCard extends StatelessWidget {
@@ -177,11 +178,12 @@ class IngredientCard extends StatelessWidget {
           child: ingredient.imageUrl != null
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    ingredient.imageUrl!,
+                  child: KookiRemoteImage(
+                    imageUrl: ingredient.imageUrl,
+                    width: 60,
+                    height: 60,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.image, color: Colors.grey),
+                    placeholder: const Icon(Icons.image, color: Colors.grey),
                   ),
                 )
               : const Icon(Icons.fastfood, color: Colors.grey, size: 30),

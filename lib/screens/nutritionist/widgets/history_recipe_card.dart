@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/recipe_model.dart';
 import 'package:intl/intl.dart';
 import '../../recipe/review_recipe_screen.dart';
+import '../../../widgets/kooki_remote_image.dart';
 
 class HistoryRecipeCard extends StatelessWidget {
   final Recipe recipe;
@@ -44,12 +45,13 @@ class HistoryRecipeCard extends StatelessWidget {
             // Image
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                recipe.imageUrl ?? '',
+              child: KookiRemoteImage(
+                imageUrl: recipe.imageUrl,
+                bucketHint: 'recipe_images',
                 width: 100,
                 height: 100,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: Container(
                   width: 100,
                   height: 100,
                   color: isDark ? Colors.white10 : Colors.grey.shade200,

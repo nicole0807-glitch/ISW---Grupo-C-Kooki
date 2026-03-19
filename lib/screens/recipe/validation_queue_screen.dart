@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/recipe_model.dart';
 import '../../services/recipe_validation_service.dart';
+import '../../widgets/kooki_remote_image.dart';
 import 'review_recipe_screen.dart';
 
 class ValidationQueueScreen extends StatefulWidget {
@@ -194,13 +195,13 @@ class _ValidationQueueScreenState extends State<ValidationQueueScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              recipe.imageUrl ?? '',
+            child: KookiRemoteImage(
+              imageUrl: recipe.imageUrl,
+              bucketHint: 'recipe_images',
               width: 64,
               height: 64,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: Colors.grey, width: 64, height: 64),
+              placeholder: Container(color: Colors.grey, width: 64, height: 64),
             ),
           ),
           const SizedBox(width: 16),

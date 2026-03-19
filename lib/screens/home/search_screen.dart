@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/recipe_model.dart';
 import '../../services/recipe_service.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/kooki_remote_image.dart';
 import '../recipe/recipe_detail_screen.dart';
 
 enum RecipeSearchSort { recent, alphabetical }
@@ -598,24 +599,12 @@ class _SearchScreenState extends State<SearchScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(18),
                 child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
-                    ? Image.network(
-                        recipe.imageUrl!,
+                    ? KookiRemoteImage(
+                        imageUrl: recipe.imageUrl,
+                        bucketHint: 'recipe_images',
                         width: 80,
                         height: 80,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 80,
-                          height: 80,
-                          alignment: Alignment.center,
-                          color: isDark ? Colors.white10 : Colors.grey.shade100,
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: isDark
-                                ? Colors.white24
-                                : Colors.grey.shade400,
-                            size: 30,
-                          ),
-                        ),
                       )
                     : Container(
                         width: 80,
@@ -624,9 +613,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         color: isDark ? Colors.white10 : Colors.grey.shade100,
                         child: Icon(
                           Icons.image_outlined,
-                          color: isDark
-                              ? Colors.white24
-                              : Colors.grey.shade400,
+                          color: isDark ? Colors.white24 : Colors.grey.shade400,
                           size: 30,
                         ),
                       ),
@@ -749,8 +736,10 @@ class _SearchScreenState extends State<SearchScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.nutveSelectionGreen,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

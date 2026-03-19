@@ -7,6 +7,7 @@ import '../../recipe/recipe_detail_screen.dart';
 import '../../recipe/user_recipe_detail_screen.dart';
 import '../../../models/user_recipe_model.dart';
 import '../../../controllers/auth_controller.dart';
+import '../../../widgets/kooki_remote_image.dart';
 
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
@@ -79,40 +80,12 @@ class RecipeCard extends StatelessWidget {
                     top: Radius.circular(32),
                   ),
                   child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
-                      ? Image.network(
-                          recipe.imageUrl!,
+                      ? KookiRemoteImage(
+                          imageUrl: recipe.imageUrl,
+                          bucketHint: 'recipe_images',
                           height: 180,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.nutveSelectionGreen.withOpacity(0.5),
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                height: 180,
-                                width: double.infinity,
-                                alignment: Alignment.center,
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.white10
-                                    : Colors.grey.shade100,
-                                child: Icon(
-                                  Icons.image_outlined,
-                                  color: Theme.of(context).brightness == Brightness.dark
-                                      ? Colors.white24
-                                      : Colors.grey.shade400,
-                                  size: 40,
-                                ),
-                              ),
                         )
                       : Container(
                           height: 180,
@@ -123,7 +96,8 @@ class RecipeCard extends StatelessWidget {
                               : Colors.grey.shade100,
                           child: Icon(
                             Icons.image_outlined,
-                            color: Theme.of(context).brightness == Brightness.dark
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
                                 ? Colors.white24
                                 : Colors.grey.shade400,
                             size: 40,
@@ -145,10 +119,12 @@ class RecipeCard extends StatelessWidget {
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(
-                                alpha: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? 0.3
-                                    : 0.1),
+                              alpha:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? 0.3
+                                  : 0.1,
+                            ),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -165,8 +141,9 @@ class RecipeCard extends StatelessWidget {
                               isFavorite
                                   ? Icons.favorite_rounded
                                   : Icons.favorite_outline_rounded,
-                              color:
-                                  isFavorite ? Colors.redAccent : Colors.grey,
+                              color: isFavorite
+                                  ? Colors.redAccent
+                                  : Colors.grey,
                               size: 20,
                             ),
                           ),

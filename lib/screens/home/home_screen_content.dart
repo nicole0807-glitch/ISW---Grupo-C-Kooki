@@ -12,6 +12,7 @@ import '../../services/admin_service.dart';
 import '../../services/recipe_service.dart';
 import '../../controllers/perfect_match_controller.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/kooki_remote_image.dart';
 import '../recipe/validation_queue_screen.dart';
 import '../recipe/publish_recipe_screen.dart';
 import '../recipe/user_recipe_detail_screen.dart';
@@ -31,7 +32,9 @@ class HomeScreenContent extends StatefulWidget {
 
 class _HomeScreenContentState extends State<HomeScreenContent> {
   final RecipeService _recipeService = RecipeService();
-  final PerfectMatchController _perfectMatchController = Get.put(PerfectMatchController());
+  final PerfectMatchController _perfectMatchController = Get.put(
+    PerfectMatchController(),
+  );
 
   HomeRecipeFilter _selectedFilter = HomeRecipeFilter.all;
 
@@ -268,51 +271,78 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
                         const SizedBox(height: 40),
                         // Pantry Recommendations (Perfect Match Logic)
-                        Obx(() {
-                          final perfectMatches = _perfectMatchController.perfectMatches;
-                          final closeMatches = _perfectMatchController.closeMatches;
-                          final hasSession = AuthController().hasSession();
-                          
-                          if (!hasSession) {
+                        Builder(
+                          builder: (context) {
+                            final hasSession = AuthController().hasSession();
+
+                            if (!hasSession) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 35),
+                                  _buildSectionHeader('Puedes hacer ahora 🥘'),
+                                  _buildGuestSectionPlaceholder(
+                                    "Inicia sesión para ver qué puedes cocinar con lo que tienes en casa.",
+                                  ),
+                                ],
+                              );
+                            }
+
+                            // Separamos los observables para evitar animaciones
+                            // inestables cuando una lista cambia y la otra no.
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 35),
                                 _buildSectionHeader('Puedes hacer ahora 🥘'),
-                                _buildGuestSectionPlaceholder("Inicia sesión para ver qué puedes cocinar con lo que tienes en casa."),
+                                Obx(() {
+                                  final perfectMatches =
+                                      _perfectMatchController.perfectMatches;
+                                  if (perfectMatches.isEmpty) {
+                                    return const Padding(
+                                      padding: EdgeInsets.only(top: 15),
+                                      child: Text(
+                                        "Suma ingredientes a tu Despensa para encontrar tu Partido Perfecto",
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    );
+                                  }
+
+                                  return Column(
+                                    children: [
+                                      const SizedBox(height: 15),
+                                      _buildMixedHorizontalList(perfectMatches),
+                                    ],
+                                  );
+                                }),
+                                const SizedBox(height: 35),
+                                _buildSectionHeader(
+                                  'Por completar (te falta 1 o 2) 🛒',
+                                ),
+                                Obx(() {
+                                  final closeMatches =
+                                      _perfectMatchController.closeMatches;
+                                  if (closeMatches.isEmpty) {
+                                    return const Padding(
+                                      padding: EdgeInsets.only(top: 15),
+                                      child: Text(
+                                        "Sigue agregando a tu Despensa...",
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    );
+                                  }
+
+                                  return Column(
+                                    children: [
+                                      const SizedBox(height: 15),
+                                      _buildMixedHorizontalList(closeMatches),
+                                    ],
+                                  );
+                                }),
                               ],
                             );
-                          }
-                          
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 35),
-                              _buildSectionHeader('Puedes hacer ahora 🥘'),
-                              if (perfectMatches.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 15),
-                                  child: Text("Suma ingredientes a tu Despensa para encontrar tu Partido Perfecto", style: TextStyle(color: Colors.grey)),
-                                )
-                              else ...[
-                                const SizedBox(height: 15),
-                                _buildMixedHorizontalList(perfectMatches),
-                              ],
-                              
-                              const SizedBox(height: 35),
-                              _buildSectionHeader('Por completar (te falta 1 o 2) 🛒'),
-                              if (closeMatches.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 15),
-                                  child: Text("Sigue agregando a tu Despensa...", style: TextStyle(color: Colors.grey)),
-                                )
-                              else ...[
-                                const SizedBox(height: 15),
-                                _buildMixedHorizontalList(closeMatches),
-                              ],
-                            ],
-                          );
-                        }),
+                          },
+                        ),
 
                         // Snacks Section
                         Builder(
@@ -339,7 +369,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       const SizedBox(height: 40),
                       _buildCommunityHeader(
                         context,
-                        canPublishCommunity: canPublishCommunity && AuthController().hasSession(),
+                        canPublishCommunity:
+                            canPublishCommunity &&
+                            AuthController().hasSession(),
                       ),
                       const SizedBox(height: 15),
                       FutureBuilder<List<UserRecipe>>(
@@ -431,8 +463,10 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.nutveSelectionGreen,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -491,46 +525,27 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(30),
                       ),
-                      child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
-                          ? Image.network(
-                              recipe.imageUrl!,
+                      child:
+                          recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
+                          ? KookiRemoteImage(
+                              imageUrl: recipe.imageUrl,
+                              bucketHint: 'recipe_images',
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.nutveSelectionGreen.withOpacity(0.5),
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    height: 150,
-                                    width: double.infinity,
-                                    alignment: Alignment.center,
-                                    color: isDark ? Colors.white10 : Colors.grey.shade100,
-                                    child: Icon(
-                                      Icons.image_outlined,
-                                      color: isDark ? Colors.white24 : Colors.grey.shade400,
-                                      size: 40,
-                                    ),
-                                  ),
                             )
                           : Container(
                               height: 150,
                               width: double.infinity,
                               alignment: Alignment.center,
-                              color: isDark ? Colors.white10 : Colors.grey.shade100,
+                              color: isDark
+                                  ? Colors.white10
+                                  : Colors.grey.shade100,
                               child: Icon(
                                 Icons.image_outlined,
-                                color: isDark ? Colors.white24 : Colors.grey.shade400,
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.grey.shade400,
                                 size: 40,
                               ),
                             ),
@@ -980,8 +995,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       ],
     );
   }
-
-
 
   Widget _buildGuestSectionPlaceholder(String message) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

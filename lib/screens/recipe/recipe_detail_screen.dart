@@ -13,6 +13,7 @@ import '../../controllers/cooking_controller.dart';
 import '../../models/cooking_models.dart';
 import '../../services/admin_service.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/kooki_remote_image.dart';
 import '../auth/login_screen.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
@@ -789,18 +790,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               background:
                   widget.recipe.imageUrl != null &&
                       widget.recipe.imageUrl!.isNotEmpty
-                  ? Image.network(
-                      widget.recipe.imageUrl!,
+                  ? KookiRemoteImage(
+                      imageUrl: widget.recipe.imageUrl,
+                      bucketHint: 'recipe_images',
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        alignment: Alignment.center,
-                        color: isDark ? Colors.white10 : Colors.grey.shade100,
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: isDark ? Colors.white24 : Colors.grey.shade400,
-                          size: 60,
-                        ),
-                      ),
                     )
                   : Container(
                       alignment: Alignment.center,

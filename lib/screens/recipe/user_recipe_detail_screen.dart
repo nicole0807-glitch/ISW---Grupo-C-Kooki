@@ -10,6 +10,7 @@ import '../../models/user_recipe_model.dart';
 import '../../services/admin_service.dart';
 import '../../utils/app_colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/kooki_remote_image.dart';
 import '../auth/login_screen.dart';
 
 class UserRecipeDetailScreen extends StatefulWidget {
@@ -504,7 +505,9 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
         child: Container(
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+            color: isDark
+                ? Colors.white.withOpacity(0.05)
+                : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
               color: isDark ? Colors.white10 : Colors.grey.shade200,
@@ -521,10 +524,7 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
               const Text(
                 'Receta Protegida',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Text(
@@ -655,10 +655,7 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
             child: CircleAvatar(
               backgroundColor: isDark ? Colors.black54 : Colors.white,
               child: IconButton(
-                icon: const Icon(
-                  Icons.gavel,
-                  color: Colors.red,
-                ),
+                icon: const Icon(Icons.gavel, color: Colors.red),
                 onPressed: () => _showReportDialog(context),
               ),
             ),
@@ -684,26 +681,10 @@ class _UserRecipeDetailScreenState extends State<UserRecipeDetailScreen> {
             ? Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    widget.recipe.imageUrl,
+                  KookiRemoteImage(
+                    imageUrl: widget.recipe.imageUrl,
+                    bucketHint: 'recipe_images',
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.nutveSelectionGreen.withOpacity(0.5),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      alignment: Alignment.center,
-                      color: isDark ? Colors.white10 : Colors.grey.shade100,
-                      child: Icon(
-                        Icons.image_outlined,
-                        color: isDark ? Colors.white24 : Colors.grey.shade400,
-                        size: 60,
-                      ),
-                    ),
                   ),
                   Container(
                     decoration: BoxDecoration(

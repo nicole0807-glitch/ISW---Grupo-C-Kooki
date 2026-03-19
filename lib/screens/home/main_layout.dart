@@ -56,7 +56,7 @@ class MainLayoutState extends State<MainLayout> {
     {
       'index': 1,
       'text':
-          'Aquí puedes gestionar tu calendario nutricional y acceder a tus planes premium. ¡Organiza tu semana!',
+          'Aquí puedes gestionar tu plan nutricional semanal y revisar tus beneficios premium sin mezclar una cosa con la otra.',
       'image': 'assets/Mitroglu1.png',
     },
     {
@@ -148,8 +148,8 @@ class MainLayoutState extends State<MainLayout> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (Get.isRegistered<PantryController>()) {
         final pantryController = Get.find<PantryController>();
-        final shoppingController = Get.isRegistered<ShoppingController>() 
-            ? Get.find<ShoppingController>() 
+        final shoppingController = Get.isRegistered<ShoppingController>()
+            ? Get.find<ShoppingController>()
             : null;
 
         if (!pantryController.isLoading.value) {
@@ -164,15 +164,24 @@ class MainLayoutState extends State<MainLayout> {
     });
   }
 
-  void _updateBadgeAndShowWelcome(PantryController pantryController, ShoppingController? shoppingController) {
+  void _updateBadgeAndShowWelcome(
+    PantryController pantryController,
+    ShoppingController? shoppingController,
+  ) {
     try {
       final notificationService = NotificationService();
-      final count = notificationService.getExpiringCount(pantryController.allIngredients);
+      final count = notificationService.getExpiringCount(
+        pantryController.allIngredients,
+      );
       final cartCount = shoppingController?.cartCount ?? 0;
-      
+
       if (mounted) setState(() => _notificationCount = count);
-      
-      notificationService.showWelcomeSummary(count, cartCount, pantryController.allIngredients);
+
+      notificationService.showWelcomeSummary(
+        count,
+        cartCount,
+        pantryController.allIngredients,
+      );
     } catch (e) {
       debugPrint('Error verificando notificaciones: $e');
     }
@@ -181,7 +190,9 @@ class MainLayoutState extends State<MainLayout> {
   void _updateBadgeOnly(PantryController pantryController) {
     try {
       final notificationService = NotificationService();
-      final count = notificationService.getExpiringCount(pantryController.allIngredients);
+      final count = notificationService.getExpiringCount(
+        pantryController.allIngredients,
+      );
       if (mounted) setState(() => _notificationCount = count);
     } catch (e) {
       debugPrint('Error actualizando badge: $e');
@@ -429,7 +440,9 @@ class MainLayoutState extends State<MainLayout> {
               final segmentWidth = constraints.maxWidth / _navItems.length;
               const bubbleWidth = 56.0;
               final leftOffset =
-                  (_selectedIndex * segmentWidth) + (segmentWidth / 2) - (bubbleWidth / 2);
+                  (_selectedIndex * segmentWidth) +
+                  (segmentWidth / 2) -
+                  (bubbleWidth / 2);
 
               return Stack(
                 clipBehavior: Clip.none,
@@ -452,7 +465,10 @@ class MainLayoutState extends State<MainLayout> {
                   // Fila de items interactivos encima
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(_navItems.length, (i) => _buildNavItem(i)),
+                    children: List.generate(
+                      _navItems.length,
+                      (i) => _buildNavItem(i),
+                    ),
                   ),
                 ],
               );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/recipe_controller.dart';
+import '../../widgets/kooki_remote_image.dart';
 import 'recipe_form_screen.dart';
 
 class AdminRecipesScreen extends StatefulWidget {
@@ -205,8 +206,9 @@ class _AdminRecipesScreenState extends State<AdminRecipesScreen> {
                     borderRadius: BorderRadius.circular(18),
                     child:
                         recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
-                        ? Image.network(
-                            recipe.imageUrl!,
+                        ? KookiRemoteImage(
+                            imageUrl: recipe.imageUrl,
+                            bucketHint: 'recipe_images',
                             width: 70,
                             height: 70,
                             fit: BoxFit.cover,

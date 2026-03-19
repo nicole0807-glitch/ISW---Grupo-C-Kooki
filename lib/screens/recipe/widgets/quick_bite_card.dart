@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/recipe_model.dart';
 import '../../../utils/app_colors.dart';
 import '../../recipe/recipe_detail_screen.dart';
+import '../../../widgets/kooki_remote_image.dart';
 
 class QuickBiteCard extends StatelessWidget {
   final Recipe recipe;
@@ -52,35 +53,12 @@ class QuickBiteCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(18),
                 child: recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty
-                    ? Image.network(
-                        recipe.imageUrl!,
+                    ? KookiRemoteImage(
+                        imageUrl: recipe.imageUrl,
+                        bucketHint: 'recipe_images',
                         width: 85,
                         height: 85,
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.nutveSelectionGreen.withOpacity(0.5),
-                              ),
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 85,
-                          height: 85,
-                          alignment: Alignment.center,
-                          color: isDark ? Colors.white10 : Colors.grey.shade100,
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: isDark ? Colors.white24 : Colors.grey.shade400,
-                            size: 30,
-                          ),
-                        ),
                       )
                     : Container(
                         width: 85,

@@ -9,13 +9,12 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 import '../../controllers/goal_controller.dart';
 import '../../controllers/premium_controller.dart';
-import '../auth/login_screen.dart';
 import '../auth/welcome_screen.dart';
 import '../../services/profile_service.dart';
 import '../goals/goal_registration_screen.dart';
-import '../recipe/widgets/macro_chart_widget.dart';
 import '../plan/premium_plan_screen.dart';
 import '../../models/recipe_model.dart';
+import '../../models/user_goal_model.dart';
 import '../../models/user_recipe_model.dart';
 import '../../services/recipe_service.dart';
 import '../recipe/widgets/recipe_card.dart';
@@ -24,6 +23,7 @@ import '../../controllers/theme_controller.dart';
 import 'saved_recipes_screen.dart';
 import '../../utils/app_colors.dart';
 import '../home/main_layout.dart';
+import '../../widgets/kooki_remote_image.dart';
 import '../../widgets/guest_view_placeholder.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -100,8 +100,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
-
-
 
   // --- DISEÑO CIERRE DE SESIÓN ---
   void _showLogoutDialog(BuildContext context) {
@@ -181,21 +179,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildProfileHeader(),
                             const SizedBox(height: 16),
                             _buildMembershipStatusCard(),
-
-                            // SECCIÓN DE METAS (HU-27)
-                            _buildSectionHeader(
-                              title: "Mi Resumen Nutricional",
-                              onAction: () => _refreshGoals(context),
-                            ),
-
-                            const SizedBox(height: 10),
-                            MacroChartWidget(goal: goalController.currentGoal),
-
-                            if (goalController.currentGoal == null)
-                              _buildSetupButton(() => _refreshGoals(context)),
-
-
-
+                            const SizedBox(height: 25),
+                            _buildDietPlanCard(goalController.currentGoal),
                             const SizedBox(height: 25),
                             _buildSectionHeader(
                               title: "Mis Recetas Guardadas",
@@ -261,17 +246,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               },
                             ),
                             _buildMenuButton(
-                              text: "Gestionar Suscripción",
+                              text: "Plan y Suscripción",
                               icon: Icons.star_outline,
                               baseColor: Colors.green,
                               onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const PremiumPlanScreen(showAppBar: true),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const PremiumPlanScreen(
+                                      showAppBar: true,
                                     ),
-                                  );
+                                  ),
+                                );
                               },
                             ),
                             _buildMenuButton(
@@ -286,12 +272,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 context.read<ThemeController>().toggleTheme();
                               },
                             ),
-                            
+
                             _buildMenuButton(
                               text: "Gestión de Tutorial",
                               icon: Icons.help_outline_rounded,
-                              baseColor: isDark 
-                                  ? AppColors.nutveSelectionGreen 
+                              baseColor: isDark
+                                  ? AppColors.nutveSelectionGreen
                                   : AppColors.nutveDarkGreen,
                               onTap: () {
                                 // Trigger the tour in MainLayout
@@ -355,18 +341,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey.shade200,
-
-                  //Lógica por si el url es NULL o ""
-                  backgroundImage: (avatarURL != null && avatarURL.isNotEmpty)
-                      ? NetworkImage(
-                          '$avatarURL?t=${DateTime.now().millisecondsSinceEpoch}',
+                  child: (avatarURL != null && avatarURL.isNotEmpty)
+                      ? ClipOval(
+                          child: KookiRemoteImage(
+                            imageUrl: avatarURL,
+                            bucketHint: 'avatars',
+                            bustCache: true,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            placeholder: Container(
+                              color: Colors.grey.shade200,
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
                         )
-                      : null,
-                  child: (avatarURL == null || avatarURL.isEmpty)
-                      ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                      : null,
+                      : const Icon(Icons.person, size: 50, color: Colors.grey),
                 ),
-
               ],
             ),
             const SizedBox(height: 16),
@@ -384,10 +380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSectionHeader({
-    required String title,
-    VoidCallback? onAction,
-  }) {
+  Widget _buildSectionHeader({required String title, VoidCallback? onAction}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -477,6 +470,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildDietPlanCard(UserGoalModel? goal) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasGoal = goal != null;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.calendar_month_rounded, color: Colors.green),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Plan de dieta",
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            hasGoal
+                ? "Tu resumen nutricional y el plan semanal ahora se gestionan desde la pestaña Plan."
+                : "Completa tu perfil nutricional para que el plan semanal se base en tus metas reales.",
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.grey.shade700,
+              height: 1.35,
+            ),
+          ),
+          if (hasGoal) ...[
+            const SizedBox(height: 10),
+            Text(
+              "Objetivo actual: ${goal.targetCalories.toStringAsFixed(0)} kcal por día",
+              style: TextStyle(
+                color: isDark
+                    ? AppColors.nutveSelectionGreen
+                    : AppColors.nutveDarkGreen,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PremiumPlanScreen(showAppBar: true),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveDarkGreen,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text("Ver plan"),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _refreshGoals(context),
+                icon: const Icon(Icons.edit_note_rounded),
+                label: Text(hasGoal ? "Editar metas" : "Configurar metas"),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSetupButton(VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(top: 15),
@@ -537,7 +621,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListTile(
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.only(left: 12, right: 16, top: 4, bottom: 4),
+        contentPadding: const EdgeInsets.only(
+          left: 12,
+          right: 16,
+          top: 4,
+          bottom: 4,
+        ),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -591,6 +680,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
   Widget _buildGuestView(BuildContext context) {
     return const Scaffold(
       body: GuestViewPlaceholder(

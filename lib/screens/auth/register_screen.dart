@@ -88,6 +88,17 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
+  bool _hasValidEmail(String email) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+  }
+
+  bool _isStrongPassword(String password) {
+    final hasMinLength = password.length >= 8;
+    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(password);
+    final hasNumber = RegExp(r'\d').hasMatch(password);
+    return hasMinLength && hasLetter && hasNumber;
+  }
+
   Future<void> _signUp() async {
     final email = _emailController.text.trim();
     final password = _passController.text.trim();
@@ -102,12 +113,14 @@ class _RegisterScreenState extends State<RegisterScreen>
       _showAuthSnackBar('El nombre de usuario no puede estar vacío.');
       return;
     }
-    if (email.isEmpty || !email.contains('@')) {
+    if (email.isEmpty || !_hasValidEmail(email)) {
       _showAuthSnackBar('Ingresa un correo electrónico válido.');
       return;
     }
-    if (password.length < 6) {
-      _showAuthSnackBar('La contraseña debe tener al menos 6 caracteres.');
+    if (!_isStrongPassword(password)) {
+      _showAuthSnackBar(
+        'La contraseña debe tener al menos 8 caracteres, una letra y un número.',
+      );
       return;
     }
 
@@ -151,7 +164,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             raw.contains('contraseña') ||
             raw.contains('weak')) {
           msg =
-              'Contraseña no válida. Usa al menos 6 caracteres con letras y números.';
+              'Contraseña no válida. Usa al menos 8 caracteres con una letra y un número.';
         } else if (raw.contains('invalid email') || raw.contains('correo')) {
           msg = 'El correo ingresado no tiene un formato válido.';
         } else {
@@ -178,7 +191,10 @@ class _RegisterScreenState extends State<RegisterScreen>
             child: FadeTransition(
               opacity: _fadeIn,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 20,
+                ),
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
@@ -214,10 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                     if (isDark) // Adjustment for dark mode visibility
                       const Text(
                         "Únete a la comunidad Kooki",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 15,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 15),
                       )
                     else
                       Text(
@@ -243,14 +256,17 @@ class _RegisterScreenState extends State<RegisterScreen>
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.nutveSelectionGreen.withOpacity(0.3),
+                                  color: AppColors.nutveSelectionGreen
+                                      .withOpacity(0.3),
                                   blurRadius: 20,
                                 ),
                               ],
                             ),
                             child: CircleAvatar(
                               radius: 52,
-                              backgroundColor: isDark ? Colors.white10 : Colors.white,
+                              backgroundColor: isDark
+                                  ? Colors.white10
+                                  : Colors.white,
                               backgroundImage: _imageBytes != null
                                   ? MemoryImage(_imageBytes!)
                                   : null,
@@ -258,7 +274,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                                   ? Icon(
                                       Icons.person_rounded,
                                       size: 55,
-                                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                                      color: isDark
+                                          ? Colors.white24
+                                          : Colors.grey.shade300,
                                     )
                                   : null,
                             ),
@@ -296,6 +314,18 @@ class _RegisterScreenState extends State<RegisterScreen>
                         fontSize: 12,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "* Campos obligatorios",
+                        style: TextStyle(
+                          color: isDark ? Colors.white60 : Colors.grey.shade600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 35),
 
                     // Form card (Sólida)
@@ -306,7 +336,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                         borderRadius: BorderRadius.circular(28),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                            color: Colors.black.withOpacity(
+                              isDark ? 0.3 : 0.05,
+                            ),
                             blurRadius: 30,
                             offset: const Offset(0, 15),
                           ),
@@ -343,6 +375,8 @@ class _RegisterScreenState extends State<RegisterScreen>
                             isDark,
                             isPass: true,
                           ),
+                          const SizedBox(height: 12),
+                          _buildPasswordRules(isDark),
                         ],
                       ),
                     ),
@@ -370,7 +404,8 @@ class _RegisterScreenState extends State<RegisterScreen>
                                   borderRadius: BorderRadius.circular(18),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.nutveSelectionGreen.withOpacity(0.4),
+                                      color: AppColors.nutveSelectionGreen
+                                          .withOpacity(0.4),
                                       blurRadius: 20,
                                       offset: const Offset(0, 8),
                                     ),
@@ -406,7 +441,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                           child: Text(
                             "Iniciar sesión",
                             style: TextStyle(
-                              color: isDark ? Colors.white : AppColors.nutveDarkGreen,
+                              color: isDark
+                                  ? Colors.white
+                                  : AppColors.nutveDarkGreen,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -426,7 +463,9 @@ class _RegisterScreenState extends State<RegisterScreen>
             top: 50,
             left: 20,
             child: CircleAvatar(
-              backgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              backgroundColor: isDark
+                  ? Colors.white10
+                  : Colors.black.withOpacity(0.05),
               child: IconButton(
                 icon: Icon(
                   Icons.arrow_back_ios_new,
@@ -449,6 +488,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     bool isDark, {
     bool isPass = false,
     TextInputType? keyboardType,
+    bool isRequired = true,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -467,7 +507,7 @@ class _RegisterScreenState extends State<RegisterScreen>
           fontSize: 15,
         ),
         decoration: InputDecoration(
-          labelText: label,
+          labelText: isRequired ? "$label *" : label,
           labelStyle: TextStyle(
             color: isDark ? Colors.white38 : Colors.grey.shade600,
           ),
@@ -494,6 +534,48 @@ class _RegisterScreenState extends State<RegisterScreen>
             vertical: 16,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordRules(bool isDark) {
+    final textColor = isDark ? Colors.white70 : Colors.grey.shade700;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Parámetros de la contraseña",
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "• Mínimo 8 caracteres",
+            style: TextStyle(color: textColor, fontSize: 12),
+          ),
+          Text(
+            "• Al menos una letra",
+            style: TextStyle(color: textColor, fontSize: 12),
+          ),
+          Text(
+            "• Al menos un número",
+            style: TextStyle(color: textColor, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

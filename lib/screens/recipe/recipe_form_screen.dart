@@ -9,6 +9,7 @@ import 'package:kooki/widgets/ingredient_selector.dart';
 import 'package:kooki/models/ingredient_master.dart';
 import 'package:kooki/utils/app_colors.dart';
 import 'package:kooki/services/image_service.dart';
+import 'package:kooki/widgets/kooki_remote_image.dart';
 
 class RecipeFormScreen extends StatefulWidget {
   final Recipe? recipe;
@@ -86,16 +87,15 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-    );
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
       final compressedBytes = await ImageService().compressRecipeImage(image);
       if (compressedBytes != null) {
         setState(() {
           _selectedImageBytes = compressedBytes;
-          _selectedFileName = 'recipe_${DateTime.now().millisecondsSinceEpoch}.webp';
+          _selectedFileName =
+              'recipe_${DateTime.now().millisecondsSinceEpoch}.webp';
         });
       }
     }
@@ -501,28 +501,27 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(24),
-                          child: Image.network(
-                            _imgUrlCtrl.text,
+                          child: KookiRemoteImage(
+                            imageUrl: _imgUrlCtrl.text,
+                            bucketHint: 'recipe_images',
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.broken_image_rounded,
-                                      size: 48,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      "URL inválido",
-                                      style: TextStyle(
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
-                                  ],
+                            height: 200,
+                            placeholder: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.broken_image_rounded,
+                                  size: 48,
+                                  color: Colors.grey.shade400,
                                 ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "URL inválido",
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

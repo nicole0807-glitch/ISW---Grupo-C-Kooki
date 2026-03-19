@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/recipe_model.dart';
 import '../../models/recipe_validation_model.dart';
 import '../../services/recipe_validation_service.dart';
+import '../../widgets/kooki_remote_image.dart';
 
 class ReviewRecipeScreen extends StatefulWidget {
   final Recipe recipe;
@@ -160,13 +161,17 @@ class _ReviewRecipeScreenState extends State<ReviewRecipeScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                widget.recipe.imageUrl ?? '',
+              child: KookiRemoteImage(
+                imageUrl: widget.recipe.imageUrl,
+                bucketHint: 'recipe_images',
                 width: 64,
                 height: 64,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(color: Colors.grey, width: 64, height: 64),
+                placeholder: Container(
+                  color: Colors.grey,
+                  width: 64,
+                  height: 64,
+                ),
               ),
             ),
             const SizedBox(width: 16),

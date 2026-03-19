@@ -9,10 +9,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../controllers/premium_controller.dart';
 import '../../models/recipe_model.dart';
+import '../../models/user_goal_model.dart';
 import '../../services/goal_service.dart';
 import '../../services/recipe_service.dart';
 import '../../utils/app_colors.dart';
+import '../goals/goal_registration_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
+import '../recipe/widgets/macro_chart_widget.dart';
 import '../../controllers/auth_controller.dart';
 import '../../widgets/guest_view_placeholder.dart';
 
@@ -37,10 +40,12 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
   late DateTime _selectedDay;
 
   List<Recipe> _recipes = [];
+  UserGoalModel? _userGoal;
   int _targetCalories = 2000;
   bool _loadingPlan = false;
   bool _isChecking = false;
   String? _errorMessage;
+  String _selectedPaymentMethod = 'Tarjeta';
 
   @override
   void initState() {
@@ -85,7 +90,11 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
       if (userId != null) {
         final goal = await _goalService.getUserGoals(userId);
         if (goal != null) {
+          _userGoal = goal;
           _targetCalories = goal.targetCalories.round();
+        } else {
+          _userGoal = null;
+          _targetCalories = 2000;
         }
       }
 
@@ -176,43 +185,6 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     }
 
     return 450.0;
-  }
-
-  Future<void> _editTargetCalories() async {
-    final ctrl = TextEditingController(text: _targetCalories.toString());
-
-    final newValue = await showDialog<int>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar objetivo calórico'),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            hintText: 'Ej: 2000',
-            labelText: 'Calorías objetivo / día',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final parsed = int.tryParse(ctrl.text.trim());
-              Navigator.pop(context, parsed);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-
-    if (newValue != null && newValue > 0) {
-      setState(() => _targetCalories = newValue);
-      _generateWeeklyPlan();
-    }
   }
 
   Future<void> _replaceMeal(DateTime day, _MealSlot slot) async {
@@ -349,15 +321,6 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     );
   }
 
-  bool _hasPaid = false; // Mock payment status
-
-  void _onMockPay() {
-    setState(() {
-      _hasPaid = true;
-    });
-    _loadGoalAndGenerate();
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!AuthController().hasSession()) {
@@ -366,14 +329,10 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
         body: const GuestViewPlaceholder(
           title: "Planes Nutricionales",
           description:
-              "Suscríbete por solo \$9.99 al mes para obtener planes personalizados, exportación a PDF y seguimiento avanzado.\n\nInicia sesión para comenzar",
+              "Inicia sesión para ver tu plan de dieta y, si quieres, activar Premium para exportarlo en PDF y obtener beneficios extra.",
           icon: Icons.auto_awesome_mosaic_outlined,
         ),
       );
-    }
-
-    if (!_hasPaid) {
-      return _buildMockPaymentGate();
     }
 
     final premium = context.watch<PremiumController>();
@@ -390,7 +349,11 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _header(premium.isPremium, untilText),
+            _buildMembershipSection(premium, untilText),
+            const SizedBox(height: 16),
+            _buildPlanSeparationCard(),
+            const SizedBox(height: 16),
+            _buildDietProfileCard(),
             const SizedBox(height: 16),
             if (_loadingPlan) ...[
               const SizedBox(height: 100),
@@ -415,6 +378,43 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openGoalRegistration() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const GoalRegistrationScreen()),
+    );
+    if (!mounted) {
+      return;
+    }
+    await _loadGoalAndGenerate();
+  }
+
+  Future<void> _handlePremiumSubscription() async {
+    final premium = context.read<PremiumController>();
+    final success = await premium.subscribeMonthly();
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          premium.lastMessage ??
+              (success
+                  ? 'Premium activado correctamente.'
+                  : 'No se pudo procesar el pago.'),
+        ),
+        backgroundColor: success
+            ? AppColors.nutveSelectionGreen
+            : Colors.redAccent,
+      ),
+    );
+
+    if (success) {
+      await _loadGoalAndGenerate();
+    }
   }
 
   Widget _buildErrorState(String message, VoidCallback onRetry) {
@@ -454,8 +454,10 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.nutveSelectionGreen,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -472,7 +474,10 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     );
   }
 
-  Widget _header(bool isPremium, String untilText) {
+  Widget _buildMembershipSection(PremiumController premium, String untilText) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paymentMethods = ['Tarjeta', 'Pago móvil', 'PayPal'];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -498,9 +503,9 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
             children: [
               const Icon(Icons.workspace_premium, color: Colors.amber),
               const SizedBox(width: 8),
-              Text(
-                isPremium ? 'Premium Activo' : 'Plan Premium',
-                style: const TextStyle(
+              const Text(
+                'Premium Kooki',
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -510,17 +515,268 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            isPremium
+            premium.isPremium
                 ? 'Tu membresía está activa hasta: $untilText'
-                : 'Suscríbete para generar tu plan semanal automático.',
+                : 'Premium desbloquea la exportación PDF del plan semanal y otros beneficios de apoyo.',
             style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: const [
+              _BenefitChip(icon: Icons.download_outlined, label: 'PDF semanal'),
+              _BenefitChip(
+                icon: Icons.auto_awesome_rounded,
+                label: 'Extras premium',
+              ),
+              _BenefitChip(
+                icon: Icons.support_agent_outlined,
+                label: 'Soporte',
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          if (premium.isPremium) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Estado de la membresía',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Activa hasta el $untilText',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Renovación automática',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      Switch(
+                        value: premium.autoRenewEnabled,
+                        activeThumbColor: Colors.amber,
+                        onChanged: (value) => context
+                            .read<PremiumController>()
+                            .setAutoRenew(value),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Método de pago',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: paymentMethods.map((method) {
+                return ChoiceChip(
+                  label: Text(method),
+                  selected: _selectedPaymentMethod == method,
+                  onSelected: (_) {
+                    setState(() => _selectedPaymentMethod = method);
+                  },
+                  selectedColor: Colors.amber,
+                  labelStyle: TextStyle(
+                    color: _selectedPaymentMethod == method
+                        ? Colors.black
+                        : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  side: BorderSide(
+                    color: _selectedPaymentMethod == method
+                        ? Colors.amber
+                        : Colors.white24,
+                  ),
+                  backgroundColor: Colors.white.withOpacity(0.08),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: premium.isLoading
+                    ? null
+                    : _handlePremiumSubscription,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                icon: premium.isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.lock_open_rounded),
+                label: Text(
+                  premium.isLoading
+                      ? 'Procesando pago...'
+                      : 'Activar Premium por \$9.99',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Demo local: el método seleccionado se usa para simular el cobro y validar el flujo premium.',
+              style: const TextStyle(color: Colors.white60, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanSeparationCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: isDark ? Colors.white70 : AppColors.nutveDarkGreen,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Tu perfil nutricional define calorías, macros y enfoque de dieta. Premium es aparte: solo suma beneficios como PDF y soporte.',
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.grey.shade700,
+                height: 1.35,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // Removed old _paymentBox and _payButton - replaced by _PaymentFormSection
+  Widget _buildDietProfileCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final goal = _userGoal;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.monitor_heart_outlined,
+                color: isDark
+                    ? AppColors.nutveSelectionGreen
+                    : AppColors.nutveDarkGreen,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Resumen nutricional',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _openGoalRegistration,
+                icon: const Icon(Icons.edit_outlined),
+                label: Text(goal == null ? 'Configurar' : 'Editar'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (goal == null) ...[
+            Text(
+              'Aún no has configurado tus metas. Puedes generar un plan base y luego completar tu perfil para personalizarlo de verdad.',
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.grey.shade700,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _openGoalRegistration,
+              icon: const Icon(Icons.playlist_add_check_circle_outlined),
+              label: const Text('Completar perfil nutricional'),
+            ),
+          ] else ...[
+            MacroChartWidget(goal: goal),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _GoalMetricChip(
+                  icon: Icons.local_fire_department_outlined,
+                  label: '${goal.targetCalories.toStringAsFixed(0)} kcal/día',
+                ),
+                _GoalMetricChip(
+                  icon: Icons.flag_outlined,
+                  label: _goalTypeLabel(goal.goalType),
+                ),
+                _GoalMetricChip(
+                  icon: Icons.monitor_weight_outlined,
+                  label: '${goal.currentWeight.toStringAsFixed(0)} kg',
+                ),
+                _GoalMetricChip(
+                  icon: Icons.height_outlined,
+                  label: '${goal.height.toStringAsFixed(0)} cm',
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _plannerControls(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -534,17 +790,32 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Objetivo diario: $_targetCalories kcal',
+            _userGoal == null
+                ? 'Plan base activo: $_targetCalories kcal por día'
+                : 'Objetivo diario según tu perfil: $_targetCalories kcal',
             style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _userGoal == null
+                ? 'Completa tu perfil nutricional para que el plan deje de usar un valor de referencia.'
+                : 'Tu dieta real se basa en las metas registradas en tu perfil.',
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.grey.shade700,
+            ),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _editTargetCalories,
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Editar calorías'),
+                  onPressed: _openGoalRegistration,
+                  icon: const Icon(Icons.edit_note_rounded),
+                  label: Text(
+                    _userGoal == null
+                        ? 'Configurar perfil'
+                        : 'Actualizar perfil',
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -691,6 +962,19 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     );
   }
 
+  String _goalTypeLabel(String goalType) {
+    switch (goalType) {
+      case 'lose':
+        return 'Bajar de peso';
+      case 'gain':
+        return 'Subir de peso';
+      case 'maintain':
+        return 'Mantener peso';
+      default:
+        return 'Meta personalizada';
+    }
+  }
+
   String _weekdayLabel(int weekday) {
     switch (weekday) {
       case DateTime.monday:
@@ -725,100 +1009,6 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     }
   }
 
-  Widget _buildMockPaymentGate() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: widget.showAppBar ? _simpleAppBar(context) : null,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(30),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.workspace_premium,
-                      size: 80,
-                      color: Colors.amber,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Plan Premium Kooki',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Obtén acceso a planes nutricionales personalizados, exportación a PDF y más.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 30),
-                    const Divider(),
-                    const SizedBox(height: 20),
-                    Text(
-                      '\$9.99 / mes',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
-                          foregroundColor: isDark ? Colors.black : Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: _onMockPay,
-                        child: const Text(
-                          'Pagar Membresía',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Pago ficticio para fines de demostración',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
@@ -840,5 +1030,74 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
   }
 }
 
-// ──────────────────────────────────────────────
-// Realistic Payment Form Widget
+class _BenefitChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _BenefitChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.amber),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalMetricChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _GoalMetricChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isDark
+                ? AppColors.nutveSelectionGreen
+                : AppColors.nutveDarkGreen,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

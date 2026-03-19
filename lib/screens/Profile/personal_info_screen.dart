@@ -4,6 +4,7 @@ import '../../controllers/home_controller.dart';
 import '../../services/profile_service.dart';
 import '../../services/image_service.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/kooki_remote_image.dart';
 
 class PersonalInfoScreen extends StatefulWidget {
   const PersonalInfoScreen({super.key});
@@ -142,7 +143,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             Navigator.pop(context);
           },
         ),
-
       ),
 
       //FutureBuilder para esperar a que los datos carguen
@@ -151,58 +151,57 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           FutureBuilder<Map<String, dynamic>?>(
             future: _userDataFuture,
             builder: (context, snapshot) {
-          //Mientras carga
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+              //Mientras carga
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          //ERROR
-          if (snapshot.hasError) {
-            return _buildErrorState(
-              "No pudimos cargar tus datos. Revisa tu conexión.",
-              _refreshData,
-            );
-          }
+              //ERROR
+              if (snapshot.hasError) {
+                return _buildErrorState(
+                  "No pudimos cargar tus datos. Revisa tu conexión.",
+                  _refreshData,
+                );
+              }
 
-          //Datos cargados
-          final data = snapshot.data;
-          _selectedRoleId ??= data?['role_id'] as int?;
+              //Datos cargados
+              final data = snapshot.data;
+              _selectedRoleId ??= data?['role_id'] as int?;
 
-          //Se verifica que data no sea null
-          final userName = (data != null && data['username'] != null)
-              ? data['username']
-              : "Usuario";
+              //Se verifica que data no sea null
+              final userName = (data != null && data['username'] != null)
+                  ? data['username']
+                  : "Usuario";
 
-          final avatarURL = (data != null) ? data['avatar_url'] : null;
+              final avatarURL = (data != null) ? data['avatar_url'] : null;
 
-          // email obtenido de auth
-          final email = _profileService.currentUser?.email ?? 'Sin email';
+              // email obtenido de auth
+              final email = _profileService.currentUser?.email ?? 'Sin email';
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                //Tarjeta de imagen y username
-                _buildTopSection(userName, avatarURL),
-                const SizedBox(height: 20),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    //Tarjeta de imagen y username
+                    _buildTopSection(userName, avatarURL),
+                    const SizedBox(height: 20),
 
-                //Tarjeta de email y contraseña
-                _buildSensitiveSection(email),
-                if (canManageRoles) ...[
-                  const SizedBox(height: 20),
-                  _buildRoleSection(),
-                ],
-              ],
-            ),
-          );
-        },
+                    //Tarjeta de email y contraseña
+                    _buildSensitiveSection(email),
+                    if (canManageRoles) ...[
+                      const SizedBox(height: 20),
+                      _buildRoleSection(),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
+        ],
       ),
-      if (_isLoading)
-        const Center(child: CircularProgressIndicator()),
-    ],
-  ),
-);
-}
+    );
+  }
 
   Widget _buildRoleSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -223,7 +222,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             Text(
               "Gestión de Rol (Admin)",
               style: TextStyle(
-                fontWeight: FontWeight.bold, 
+                fontWeight: FontWeight.bold,
                 fontSize: 16,
                 color: isDark ? Colors.white : Colors.black,
               ),
@@ -300,12 +299,27 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 CircleAvatar(
                   radius: 35,
                   backgroundColor: Colors.grey.shade200,
-                  backgroundImage: (avatarURL != null && avatarURL.isNotEmpty)
-                      ? NetworkImage(avatarURL)
-                      : null,
-                  child: (avatarURL == null || avatarURL.isEmpty)
-                      ? const Icon(Icons.person, size: 35, color: Colors.grey)
-                      : null,
+                  child: (avatarURL != null && avatarURL.isNotEmpty)
+                      ? ClipOval(
+                          child: KookiRemoteImage(
+                            imageUrl: avatarURL,
+                            bucketHint: 'avatars',
+                            bustCache: true,
+                            width: 70,
+                            height: 70,
+                            fit: BoxFit.cover,
+                            placeholder: Container(
+                              color: Colors.grey.shade200,
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.person,
+                                size: 35,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        )
+                      : const Icon(Icons.person, size: 35, color: Colors.grey),
                 ),
                 //Botón de editar foto
                 Positioned(
@@ -620,6 +634,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       },
     );
   }
+
   Widget _buildErrorState(String message, VoidCallback onRetry) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
@@ -649,8 +664,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.nutveSelectionGreen,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
