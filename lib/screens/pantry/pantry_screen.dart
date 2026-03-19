@@ -32,6 +32,7 @@ class _PantryScreenState extends State<PantryScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!mounted) return;
     shoppingController.loadCartItems();
   }
 

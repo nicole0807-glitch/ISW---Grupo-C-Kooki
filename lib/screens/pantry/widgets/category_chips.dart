@@ -3,9 +3,14 @@ import 'package:get/get.dart';
 import '../../../utils/app_colors.dart';
 import '../../../controllers/pantry_controller.dart';
 
-class CategoryChips extends StatelessWidget {
+class CategoryChips extends StatefulWidget {
   const CategoryChips({super.key});
 
+  @override
+  State<CategoryChips> createState() => _CategoryChipsState();
+}
+
+class _CategoryChipsState extends State<CategoryChips> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -26,11 +31,15 @@ class CategoryChips extends StatelessWidget {
           itemBuilder: (context, index) {
             final category = controller.categories[index];
             return Obx(() {
+              // Guard: evitar rebuild si el widget ya no está montado
+              if (!mounted) return const SizedBox.shrink();
+
               final isSelected = controller.selectedCategory.value == category;
               return ChoiceChip(
                 label: Text(category),
                 selected: isSelected,
                 onSelected: (selected) {
+                  if (!mounted) return;
                   if (selected) {
                     controller.setCategory(category);
                   }

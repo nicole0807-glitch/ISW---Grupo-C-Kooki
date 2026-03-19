@@ -6,6 +6,7 @@ import '../../utils/app_colors.dart';
 import '../../controllers/favorites_controller.dart';
 import '../../controllers/pantry_controller.dart';
 import '../../controllers/shopping_list_controller.dart';
+import '../../controllers/shopping_controller.dart';
 import '../../models/recipe_model.dart';
 import '../../controllers/cooking_controller.dart';
 import '../../models/cooking_models.dart';
@@ -25,6 +26,7 @@ class RecipeDetailScreen extends StatefulWidget {
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   final CookingController _cookingController = Get.find<CookingController>();
   final supabase = Supabase.instance.client;
+  int _selectedTabIndex = 0;
 
   Future<void> _rateRecipe(double ratingValue) async {
     try {
@@ -176,113 +178,287 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
   void _showMissingIngredientsSheet(List<MissingIngredient> missing) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    // Estado de selección: todos seleccionados por defecto
+    final selected = List<bool>.filled(missing.length, true);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 20),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final selectedItems = <MissingIngredient>[];
+          for (int i = 0; i < missing.length; i++) {
+            if (selected[i]) selectedItems.add(missing[i]);
+          }
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
             ),
-            const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
-            const SizedBox(height: 16),
-            Text(
-              "Faltan Ingredientes",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black,
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: missing.length,
-                itemBuilder: (context, index) {
-                  final item = missing[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.red.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(
-                        color: isDark ? Colors.white10 : Colors.red.withOpacity(0.1),
-                      ),
+            child: Column(
+              children: [
+                // Drag handle
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Icono de advertencia
+                const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+                const SizedBox(height: 16),
+                // Título
+                Text(
+                  "Faltan Ingredientes",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.nutveDarkGreen,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Subtítulo con contador
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    "${selectedItems.length} de ${missing.length} seleccionados",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          item.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Lista de ingredientes faltantes
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: missing.length,
+                    itemBuilder: (context, index) {
+                      final item = missing[index];
+                      final isSelected = selected[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? (isSelected
+                                  ? AppColors.nutveSelectionGreen.withOpacity(0.12)
+                                  : Colors.white.withOpacity(0.05))
+                              : (isSelected
+                                  ? AppColors.nutveSelectionGreen.withOpacity(0.08)
+                                  : Colors.grey.withOpacity(0.05)),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isDark
+                                ? (isSelected
+                                    ? AppColors.nutveSelectionGreen.withOpacity(0.3)
+                                    : Colors.white10)
+                                : (isSelected
+                                    ? AppColors.nutveSelectionGreen.withOpacity(0.2)
+                                    : Colors.grey.withOpacity(0.15)),
+                          ),
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        child: Row(
                           children: [
-                            Text(
-                              "Faltan: ${item.missingQuantity} ${item.unit}",
-                              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                            // Ícono de carrito
+                            Icon(
+                              Icons.shopping_cart_outlined,
+                              color: isSelected
+                                  ? AppColors.nutveSelectionGreen
+                                  : (isDark ? Colors.grey[600] : Colors.grey[400]),
+                              size: 22,
+                            ),
+                            const SizedBox(width: 12),
+                            // Nombre y cantidad
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Faltan: ${item.missingQuantity} ${item.unit}",
+                                    style: TextStyle(
+                                      color: isDark ? Colors.redAccent[100] : Colors.red,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Checkbox
+                            Checkbox(
+                              value: isSelected,
+                              activeColor: AppColors.nutveSelectionGreen,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              onChanged: (val) {
+                                setSheetState(() {
+                                  selected[index] = val ?? false;
+                                });
+                              },
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      );
+                    },
+                  ),
+                ),
+                // Botones de acción
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(
+                            "CANCELAR",
+                            style: TextStyle(
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text("CANCELAR", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.shopping_cart, size: 20),
+                          label: const Text(
+                            "A LA LISTA",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.nutveSelectionGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: selectedItems.isEmpty
+                              ? null
+                              : () async {
+                                  Navigator.pop(ctx);
+                                  final success = await _cookingController
+                                      .addToShoppingList(selectedItems);
+                                  if (!mounted) return;
+                                  if (success) {
+                                    // Refrescar carrito si está registrado
+                                    try {
+                                      Get.find<ShoppingController>()
+                                          .loadCartItems();
+                                    } catch (_) {}
+                                    _showSuccessOverlay();
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Overlay central de confirmación con auto-dismiss a 3 segundos.
+  void _showSuccessOverlay() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black26,
+      builder: (ctx) {
+        // Auto-dismiss tras 3 segundos
+        Future.delayed(const Duration(seconds: 3), () {
+          if (Navigator.of(ctx).canPop()) {
+            Navigator.of(ctx).pop();
+          }
+        });
+
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 28),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.nutveSelectionGreen.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.kitchen,
+                      size: 48,
+                      color: AppColors.nutveSelectionGreen,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFC7FF29),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      ),
-                      onPressed: () {
-                        // _shoppingListController.addMissingIngredients(missing);
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Ingredientes faltantes añadidos a la lista de compras")),
-                        );
-                      },
-                      child: const Text("A LA LISTA", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  Text(
+                    "¡Ingredientes agregados!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.nutveDarkGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Puedes gestionarlos en tu Carrito dentro de la sección Despensa.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      height: 1.4,
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -747,49 +923,40 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
                   // Tabs
                   const SizedBox(height: 30),
-                  const DefaultTabController(
-                    length: 3,
-                    child: TabBar(
-                      labelColor: Colors.black,
-                      unselectedLabelColor: Colors.grey,
-                      indicatorColor: AppColors.nutveSelectionGreen,
-                      indicatorWeight: 3,
-                      tabs: [
-                        Tab(text: "Ingredientes"),
-                        Tab(text: "Instrucciones"),
-                        Tab(text: "Nutrición"),
-                      ],
-                    ),
-                  ),
+                  _buildTabBar(isDark),
 
-                  // Lista de Ingredientes
+                  // Contenido condicional según pestaña seleccionada
                   const SizedBox(height: 20),
-                  Text(
-                    "Ingredientes para 2 porciones",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: isDark ? Colors.white : Colors.black,
+                  if (_selectedTabIndex == 0) ...[
+                    Text(
+                      "Ingredientes para 2 porciones",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  ...widget.recipe.ingredients.map(
-                    (ing) => _buildIngredientItem(ing),
-                  ),
-
-                  const SizedBox(height: 40),
-                  Text(
-                    "Paso a Paso",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black,
+                    const SizedBox(height: 15),
+                    ...widget.recipe.ingredients.map(
+                      (ing) => _buildIngredientItem(ing),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  ...widget.recipe.steps.asMap().entries.map(
-                    (entry) => _buildStepItem(entry.key + 1, entry.value),
-                  ),
+                  ],
+                  if (_selectedTabIndex == 1) ...[
+                    Text(
+                      "Paso a Paso",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ...widget.recipe.steps.asMap().entries.map(
+                      (entry) => _buildStepItem(entry.key + 1, entry.value),
+                    ),
+                  ],
+                  if (_selectedTabIndex == 2)
+                    _buildNutritionContent(isDark),
 
                   const SizedBox(height: 100), // Espacio para el botón flotante
                 ],
@@ -950,7 +1117,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  Widget _buildStepItem(int number, String instruction) {
+   Widget _buildStepItem(int number, String instruction) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 25),
       child: Row(
@@ -978,4 +1145,164 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       ),
     );
   }
+
+  Widget _buildTabBar(bool isDark) {
+    final tabs = ["Ingredientes", "Instrucciones", "Nutrición"];
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.white12 : Colors.grey.shade200,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final isSelected = _selectedTabIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTabIndex = index),
+              child: Container(
+                padding: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected
+                          ? AppColors.nutveSelectionGreen
+                          : Colors.transparent,
+                      width: 3,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  tabs[index],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected
+                        ? AppColors.nutveSelectionGreen
+                        : (isDark ? Colors.grey[500] : Colors.grey),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildNutritionContent(bool isDark) {
+    final nutrition = widget.recipe.nutrition;
+
+    if (nutrition.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(
+                Icons.no_food_outlined,
+                size: 48,
+                color: isDark ? Colors.grey[700] : Colors.grey[300],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Información nutricional no disponible",
+                style: TextStyle(
+                  color: isDark ? Colors.grey[500] : Colors.grey[600],
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Mapa de íconos para claves comunes de nutrición
+    final iconMap = <String, IconData>{
+      'calories': Icons.local_fire_department_outlined,
+      'calorias': Icons.local_fire_department_outlined,
+      'protein': Icons.fitness_center,
+      'proteina': Icons.fitness_center,
+      'proteinas': Icons.fitness_center,
+      'carbs': Icons.grain,
+      'carbohidratos': Icons.grain,
+      'fat': Icons.opacity,
+      'grasa': Icons.opacity,
+      'grasas': Icons.opacity,
+      'fiber': Icons.eco_outlined,
+      'fibra': Icons.eco_outlined,
+      'sodium': Icons.water_drop_outlined,
+      'sodio': Icons.water_drop_outlined,
+      'sugar': Icons.cake_outlined,
+      'azucar': Icons.cake_outlined,
+      'azúcar': Icons.cake_outlined,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Información Nutricional",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...nutrition.entries.map((entry) {
+          final key = entry.key;
+          final value = entry.value;
+          final icon = iconMap[key.toLowerCase()] ?? Icons.info_outline;
+          final label = key[0].toUpperCase() + key.substring(1);
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : AppColors.nutveSelectionGreen.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white10
+                    : AppColors.nutveSelectionGreen.withOpacity(0.12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.nutveSelectionGreen, size: 22),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                Text(
+                  "$value",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: isDark ? Colors.white70 : AppColors.nutveDarkGreen,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
 }
+

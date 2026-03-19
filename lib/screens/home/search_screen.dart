@@ -669,7 +669,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            "${recipe.cookingTime} min",
+                            recipe.cookingTime ?? "-- min",
                             style: TextStyle(
                               color: Colors.grey.shade400,
                               fontSize: 11,

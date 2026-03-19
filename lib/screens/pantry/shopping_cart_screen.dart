@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/shopping_controller.dart';
 import '../../models/shopping_list_item.dart';
+import '../../utils/app_colors.dart';
 
 /// Pantalla del Carrito de Compras.
 /// Muestra los ingredientes faltantes y permite marcarlos como comprados.
@@ -11,20 +12,21 @@ class ShoppingCartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<ShoppingController>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Carrito de Compras',
           style: TextStyle(
-            color: Colors.black,
+            color: isDark ? Colors.white : Colors.black,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -33,14 +35,14 @@ class ShoppingCartScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
             tooltip: 'Limpiar carrito',
-            onPressed: () => _confirmClearCart(context, controller),
+            onPressed: () => _confirmClearCart(context, controller, isDark),
           ),
         ],
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
           return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
+            child: CircularProgressIndicator(color: AppColors.nutveSelectionGreen),
           );
         }
 
@@ -52,18 +54,24 @@ class ShoppingCartScreen extends StatelessWidget {
                 Icon(
                   Icons.shopping_cart_outlined,
                   size: 80,
-                  color: Colors.grey[300],
+                  color: isDark ? Colors.grey[700] : Colors.grey[300],
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'No tienes ingredientes pendientes',
-                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Los ingredientes faltantes de tus recetas\naparecerán aquí',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.grey[600] : Colors.grey[400],
+                  ),
                 ),
               ],
             ),
@@ -71,6 +79,7 @@ class ShoppingCartScreen extends StatelessWidget {
         }
 
         return RefreshIndicator(
+          color: AppColors.nutveSelectionGreen,
           onRefresh: controller.loadCartItems,
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -89,18 +98,31 @@ class ShoppingCartScreen extends StatelessWidget {
     );
   }
 
-  void _confirmClearCart(BuildContext context, ShoppingController controller) {
+  void _confirmClearCart(
+    BuildContext context,
+    ShoppingController controller,
+    bool isDark,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Limpiar carrito'),
-        content: const Text(
+        backgroundColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Limpiar carrito',
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+        ),
+        content: Text(
           '¿Estás seguro? Esto eliminará todos los ingredientes pendientes del carrito.',
+          style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -178,7 +200,7 @@ class _ShoppingCartItemCardState extends State<_ShoppingCartItemCard>
         '¡Comprado!',
         '${widget.item.displayName} se agregó a tu despensa',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: const Color(0xFF4CAF50),
+        backgroundColor: AppColors.nutveSelectionGreen,
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
         margin: const EdgeInsets.all(10),
@@ -198,6 +220,8 @@ class _ShoppingCartItemCardState extends State<_ShoppingCartItemCard>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ScaleTransition(
       scale: _scaleAnimation,
       child: AnimatedOpacity(
@@ -206,11 +230,13 @@ class _ShoppingCartItemCardState extends State<_ShoppingCartItemCard>
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: isDark
+                    ? Colors.black.withOpacity(0.3)
+                    : Colors.black.withOpacity(0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -230,12 +256,12 @@ class _ShoppingCartItemCardState extends State<_ShoppingCartItemCard>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _isChecked
-                      ? const Color(0xFF4CAF50)
+                      ? AppColors.nutveSelectionGreen
                       : Colors.transparent,
                   border: Border.all(
                     color: _isChecked
-                        ? const Color(0xFF4CAF50)
-                        : Colors.grey.shade400,
+                        ? AppColors.nutveSelectionGreen
+                        : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
                     width: 2,
                   ),
                 ),
@@ -250,14 +276,19 @@ class _ShoppingCartItemCardState extends State<_ShoppingCartItemCard>
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
                 decoration: _isChecked ? TextDecoration.lineThrough : null,
-                color: _isChecked ? Colors.grey : Colors.black,
+                color: _isChecked
+                    ? Colors.grey
+                    : (isDark ? Colors.white : Colors.black),
               ),
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 widget.item.displayQuantity,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                style: TextStyle(
+                  color: isDark ? Colors.grey[500] : Colors.grey,
+                  fontSize: 14,
+                ),
               ),
             ),
             trailing: Row(
@@ -271,16 +302,16 @@ class _ShoppingCartItemCardState extends State<_ShoppingCartItemCard>
                         ? Icons.check_circle
                         : Icons.check_circle_outline,
                     color: _isChecked
-                        ? const Color(0xFF4CAF50)
-                        : Colors.grey.shade600,
+                        ? AppColors.nutveSelectionGreen
+                        : (isDark ? Colors.grey.shade500 : Colors.grey.shade600),
                     size: 20,
                   ),
                   label: Text(
                     _isChecked ? '¡Listo!' : 'Comprado',
                     style: TextStyle(
                       color: _isChecked
-                          ? const Color(0xFF4CAF50)
-                          : Colors.grey.shade600,
+                          ? AppColors.nutveSelectionGreen
+                          : (isDark ? Colors.grey.shade500 : Colors.grey.shade600),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -290,7 +321,7 @@ class _ShoppingCartItemCardState extends State<_ShoppingCartItemCard>
                 IconButton(
                   icon: Icon(
                     Icons.close,
-                    color: Colors.grey.shade400,
+                    color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
                     size: 20,
                   ),
                   onPressed: _isRemoving ? null : _onRemoveItem,

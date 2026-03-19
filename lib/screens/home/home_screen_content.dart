@@ -1033,7 +1033,7 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
       AppPermission.moderateCommunityRecipes,
     );
     return SizedBox(
-      height: 320,
+      height: 340,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
