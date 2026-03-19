@@ -34,11 +34,15 @@ class PantryController extends GetxController {
         print(
           'PantryController: Auth change detected ($event). Loading ingredients...',
         );
-        loadIngredients(showError: false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          loadIngredients(showError: false);
+        });
       }
     });
 
-    loadIngredients(showError: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadIngredients(showError: false);
+    });
   }
 
   String? get userId => Supabase.instance.client.auth.currentUser?.id;
@@ -70,16 +74,18 @@ class PantryController extends GetxController {
       message = 'No se pudo completar la operación.';
     }
 
-    Get.snackbar(
-      'Aviso',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.nutveSelectionGreen.withOpacity(0.9),
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(10),
-      borderRadius: 8,
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.snackbar(
+        'Aviso',
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.nutveSelectionGreen.withOpacity(0.9),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(10),
+        borderRadius: 8,
+      );
+    });
   }
 
   /// Add new ingredient
@@ -90,16 +96,18 @@ class PantryController extends GetxController {
       allIngredients.insert(0, newIngredient);
       applyFilters();
 
-      Get.snackbar(
-        'Éxito', // ← Este mensaje debería aparecer
-        'Ingrediente agregado correctamente',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: const Color(0xFF4CAF50),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.all(10),
-        borderRadius: 8,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Éxito', // ← Este mensaje debería aparecer
+          'Ingrediente agregado correctamente',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF4CAF50),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+          margin: const EdgeInsets.all(10),
+          borderRadius: 8,
+        );
+      });
       return true;
     } catch (e) {
       _handleError(e);
@@ -121,11 +129,13 @@ class PantryController extends GetxController {
         applyFilters();
       }
 
-      Get.snackbar(
-        'Éxito',
-        'Ingrediente actualizado',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Éxito',
+          'Ingrediente actualizado',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      });
       return true;
     } catch (e) {
       _handleError(e);
@@ -192,11 +202,13 @@ class PantryController extends GetxController {
   /// Clear All - Vaciar toda la despensa con confirmación
   Future<void> clearAll(BuildContext context) async {
     if (allIngredients.isEmpty) {
-      Get.snackbar(
-        'Info',
-        'La despensa ya está vacía',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Info',
+          'La despensa ya está vacía',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      });
       return;
     }
 
@@ -234,13 +246,15 @@ class PantryController extends GetxController {
       searchQuery.value = '';
       applyFilters();
 
-      Get.snackbar(
-        'Éxito',
-        'Despensa vaciada correctamente',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: const Color(0xFF4CAF50),
-        colorText: Colors.white,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Éxito',
+          'Despensa vaciada correctamente',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF4CAF50),
+          colorText: Colors.white,
+        );
+      });
     } catch (e) {
       _handleError(e);
     } finally {

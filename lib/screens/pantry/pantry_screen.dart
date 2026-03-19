@@ -33,7 +33,11 @@ class _PantryScreenState extends State<PantryScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!mounted) return;
-    shoppingController.loadCartItems();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        shoppingController.loadCartItems();
+      }
+    });
   }
 
   @override

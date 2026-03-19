@@ -11,6 +11,8 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  bool hasNotifiedThisSession = false;
+
   // Inicializar el servicio
   Future<void> initialize() async {
     tz.initializeTimeZones();
@@ -61,6 +63,29 @@ class NotificationService {
       presentSound: true,
     ),
   );
+
+  int getExpiringCount(List<Ingredient> ingredients) {
+    int count = 0;
+    for (final ingredient in ingredients) {
+      if (ingredient.expirationDate == null) continue;
+      final daysLeft = ingredient.daysUntilExpiration ?? 0;
+      if (daysLeft <= 7) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  void showWelcomeSummary(int expiringCount, int cartCount, List<Ingredient> ingredients) {
+    if (hasNotifiedThisSession) return;
+
+    // Solo verificamos ingredientes expirables para las notificaciones de sistema
+    if (expiringCount > 0) {
+      checkAndNotifyExpiringIngredients(ingredients);
+    }
+
+    hasNotifiedThisSession = true;
+  }
 
   // Verificar y enviar notificaciones de ingredientes que expiran pronto
   Future<int> checkAndNotifyExpiringIngredients(

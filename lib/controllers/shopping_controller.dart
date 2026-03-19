@@ -27,13 +27,15 @@ class ShoppingController extends GetxController {
       final items = await _repository.fetchCartItems();
       cartItems.assignAll(items);
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudieron cargar los ítems del carrito: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Error',
+          'No se pudieron cargar los ítems del carrito: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      });
     } finally {
       isLoading.value = false;
     }
@@ -52,13 +54,15 @@ class ShoppingController extends GetxController {
 
       return true;
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudo marcar como comprado: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Error',
+          'No se pudo marcar como comprado: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      });
       return false;
     }
   }
@@ -70,13 +74,15 @@ class ShoppingController extends GetxController {
       cartItems.removeWhere((item) => item.id == cartItemId);
       return true;
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudo eliminar el ítem: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Error',
+          'No se pudo eliminar el ítem: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      });
       return false;
     }
   }
@@ -86,22 +92,26 @@ class ShoppingController extends GetxController {
     try {
       await _repository.clearCartItems();
       cartItems.clear();
-      Get.snackbar(
-        'Éxito',
-        'Carrito limpiado correctamente',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: const Color(0xFF4CAF50),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Éxito',
+          'Carrito limpiado correctamente',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF4CAF50),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      });
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudo limpiar el carrito: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Error',
+          'No se pudo limpiar el carrito: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      });
     }
   }
 

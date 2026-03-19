@@ -51,8 +51,15 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
     super.initState();
     if (widget.ingredient != null) {
       _quantityController.text = widget.ingredient!.quantity.toString();
-      _selectedCategory = widget.ingredient!.category;
-      _selectedUnit = widget.ingredient!.unit;
+      // Safety: si el valor de Supabase no está en la lista, usar el primero
+      final dbCategory = widget.ingredient!.category;
+      _selectedCategory = _categories.contains(dbCategory)
+          ? dbCategory
+          : _categories.first;
+      final dbUnit = widget.ingredient!.unit;
+      _selectedUnit = _units.contains(dbUnit)
+          ? dbUnit
+          : _units.first;
       _expirationDate = widget.ingredient!.expirationDate;
     }
     _loadAllIngredients();
@@ -420,18 +427,21 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: isDark ? Colors.transparent : Colors.green[50],
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green),
+                    border: Border.all(color: const Color(0xFF4CAF50)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green),
+                      const Icon(Icons.check_circle, color: Color(0xFF4CAF50)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Seleccionado: ${_selectedIngredient!.name}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
                         ),
                       ),
                     ],
@@ -476,7 +486,7 @@ class _AddIngredientScreenState extends State<AddIngredientScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      initialValue: _selectedUnit,
+                      value: _selectedUnit,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),

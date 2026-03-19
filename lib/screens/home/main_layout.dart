@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../utils/app_colors.dart';
 import '../../controllers/pantry_controller.dart';
+import '../../controllers/shopping_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../services/notification_service.dart';
 import 'home_screen_content.dart';
@@ -147,29 +148,43 @@ class MainLayoutState extends State<MainLayout> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (Get.isRegistered<PantryController>()) {
         final pantryController = Get.find<PantryController>();
+        final shoppingController = Get.isRegistered<ShoppingController>() 
+            ? Get.find<ShoppingController>() 
+            : null;
+
         if (!pantryController.isLoading.value) {
-          _checkExpiringIngredients();
+          _updateBadgeAndShowWelcome(pantryController, shoppingController);
         }
         ever(pantryController.isLoading, (bool isLoading) {
           if (!isLoading) {
-            _checkExpiringIngredients();
+            _updateBadgeOnly(pantryController);
           }
         });
       }
     });
   }
 
-  Future<void> _checkExpiringIngredients() async {
+  void _updateBadgeAndShowWelcome(PantryController pantryController, ShoppingController? shoppingController) {
     try {
-      if (Get.isRegistered<PantryController>()) {
-        final pantryController = Get.find<PantryController>();
-        final notificationService = NotificationService();
-        final count = await notificationService
-            .checkAndNotifyExpiringIngredients(pantryController.allIngredients);
-        if (mounted) setState(() => _notificationCount = count);
-      }
+      final notificationService = NotificationService();
+      final count = notificationService.getExpiringCount(pantryController.allIngredients);
+      final cartCount = shoppingController?.cartCount ?? 0;
+      
+      if (mounted) setState(() => _notificationCount = count);
+      
+      notificationService.showWelcomeSummary(count, cartCount, pantryController.allIngredients);
     } catch (e) {
       debugPrint('Error verificando notificaciones: $e');
+    }
+  }
+
+  void _updateBadgeOnly(PantryController pantryController) {
+    try {
+      final notificationService = NotificationService();
+      final count = notificationService.getExpiringCount(pantryController.allIngredients);
+      if (mounted) setState(() => _notificationCount = count);
+    } catch (e) {
+      debugPrint('Error actualizando badge: $e');
     }
   }
 
