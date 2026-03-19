@@ -15,7 +15,6 @@ class RecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lógica dinámica: solo mostramos el label si la calificación es >= 4.5
     final favorites = context.watch<FavoritesController>();
     final isFavorite = favorites.isFavorite(recipe.id);
     final bool isTopRated = recipe.rating >= 4.5;
@@ -24,14 +23,13 @@ class RecipeCard extends StatelessWidget {
       onTap: () {
         final isCommunityRecipe = int.tryParse(recipe.id.toString()) == null;
         if (isCommunityRecipe) {
-          // Si es de comunidad, navegamos al detalle de usuario
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => UserRecipeDetailScreen(
                 recipe: UserRecipe(
                   id: recipe.id.toString(),
-                  userId: '', // No lo tenemos aquí pero el detalle lo manejará
+                  userId: '',
                   userName: 'Cargando...',
                   title: recipe.title,
                   imageUrl: recipe.imageUrl ?? '',
@@ -56,11 +54,7 @@ class RecipeCard extends StatelessWidget {
       },
       child: Container(
         width: 260,
-        margin: const EdgeInsets.only(
-          right: 20,
-          bottom: 15,
-          top: 5,
-        ), // Un poco más de margen
+        margin: const EdgeInsets.only(right: 20, bottom: 15, top: 5),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(32),
@@ -78,7 +72,6 @@ class RecipeCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // --- PARTE SUPERIOR (IMAGEN + OVERLAYS) ---
             Stack(
               children: [
                 ClipRRect(
@@ -224,7 +217,7 @@ class RecipeCard extends StatelessWidget {
               ],
             ),
 
-            // --- INFO DE LA RECETA ---
+            // INFO DE LA RECETA
             Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -256,7 +249,6 @@ class RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 18),
-
                   Row(
                     children: [
                       Icon(

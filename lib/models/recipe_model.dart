@@ -28,7 +28,7 @@ class Recipe {
     required this.tagIds,
     this.reviewerName,
     this.cost,
-    this.status = 'pending', // Valor por defecto
+    this.status = 'pending',
   });
 
   factory Recipe.fromMap(Map<String, dynamic> map) {
@@ -58,9 +58,7 @@ class Recipe {
       cost: map['cost'],
       rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
       nutrition: map['nutrition'] is Map ? map['nutrition'] : {},
-      // --- MAPEO DEL NUEVO CAMPO DESDE SUPABASE ---
       status: map['status'] ?? 'pendiente',
-
       ingredients: (map['Recipe_Ingredients'] as List? ?? []).map((i) {
         final ingredientData = i['Ingredient'] as Map<String, dynamic>?;
         return RecipeIngredient(

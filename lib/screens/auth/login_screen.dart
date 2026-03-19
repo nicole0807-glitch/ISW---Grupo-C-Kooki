@@ -4,6 +4,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 import '../../utils/app_colors.dart';
 import '../home/main_layout.dart';
+import '../nutritionist/nutritionist_main_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -123,14 +124,19 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       if (success && mounted) {
-        await context.read<HomeController>().loadUserRole();
+        final homeController = context.read<HomeController>();
+        await homeController.loadUserRole();
 
         if (mounted) {
+          final nextScreen = homeController.isNutricionista
+              ? const NutritionistMainScreen()
+              : const MainLayout();
+
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
-                  const MainLayout(),
+                  nextScreen,
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                     return FadeTransition(opacity: animation, child: child);
@@ -240,7 +246,9 @@ class _LoginScreenState extends State<LoginScreen>
                             borderRadius: BorderRadius.circular(30),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                                color: Colors.black.withOpacity(
+                                  isDark ? 0.3 : 0.05,
+                                ),
                                 blurRadius: 30,
                                 offset: const Offset(0, 15),
                               ),
@@ -279,7 +287,9 @@ class _LoginScreenState extends State<LoginScreen>
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
                             );
                           },
                           child: RichText(
@@ -293,7 +303,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 TextSpan(
                                   text: "Crear perfil",
                                   style: TextStyle(
-                                    color: isDark ? Colors.white : AppColors.nutveDarkGreen,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.nutveDarkGreen,
                                     fontWeight: FontWeight.bold,
                                     decoration: TextDecoration.underline,
                                   ),
@@ -316,7 +328,9 @@ class _LoginScreenState extends State<LoginScreen>
             top: 50,
             left: 20,
             child: CircleAvatar(
-              backgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              backgroundColor: isDark
+                  ? Colors.white10
+                  : Colors.black.withOpacity(0.05),
               child: IconButton(
                 icon: Icon(
                   Icons.arrow_back_ios_new,
@@ -357,7 +371,9 @@ class _LoginScreenState extends State<LoginScreen>
         decoration: InputDecoration(
           prefixIcon: Icon(
             icon,
-            color: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
+            color: isDark
+                ? AppColors.nutveSelectionGreen
+                : AppColors.nutveDarkGreen,
           ),
           suffixIcon: isPass
               ? IconButton(
@@ -367,7 +383,8 @@ class _LoginScreenState extends State<LoginScreen>
                         : Icons.visibility_outlined,
                     color: isDark ? Colors.white38 : Colors.grey,
                   ),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 )
               : null,
           labelText: label,

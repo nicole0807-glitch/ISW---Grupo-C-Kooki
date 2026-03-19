@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:get/get.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/app_colors.dart';
 import '../../controllers/favorites_controller.dart';
@@ -27,6 +28,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   final CookingController _cookingController = Get.find<CookingController>();
   final supabase = Supabase.instance.client;
   int _selectedTabIndex = 0;
+
+  void _shareRecipe() {
+    final recipeTitle = widget.recipe.title;
+    Share.share(
+      'Mira esta receta en Kooki: $recipeTitle',
+      subject: 'Receta: $recipeTitle',
+    );
+  }
 
   Future<void> _rateRecipe(double ratingValue) async {
     try {
@@ -196,7 +205,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             height: MediaQuery.of(context).size.height * 0.85,
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(25),
+              ),
             ),
             child: Column(
               children: [
@@ -211,7 +222,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                 ),
                 // Icono de advertencia
-                const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 48,
+                  color: Colors.orange,
+                ),
                 const SizedBox(height: 16),
                 // Título
                 Text(
@@ -249,20 +264,26 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         decoration: BoxDecoration(
                           color: isDark
                               ? (isSelected
-                                  ? AppColors.nutveSelectionGreen.withOpacity(0.12)
-                                  : Colors.white.withOpacity(0.05))
+                                    ? AppColors.nutveSelectionGreen.withOpacity(
+                                        0.12,
+                                      )
+                                    : Colors.white.withOpacity(0.05))
                               : (isSelected
-                                  ? AppColors.nutveSelectionGreen.withOpacity(0.08)
-                                  : Colors.grey.withOpacity(0.05)),
+                                    ? AppColors.nutveSelectionGreen.withOpacity(
+                                        0.08,
+                                      )
+                                    : Colors.grey.withOpacity(0.05)),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isDark
                                 ? (isSelected
-                                    ? AppColors.nutveSelectionGreen.withOpacity(0.3)
-                                    : Colors.white10)
+                                      ? AppColors.nutveSelectionGreen
+                                            .withOpacity(0.3)
+                                      : Colors.white10)
                                 : (isSelected
-                                    ? AppColors.nutveSelectionGreen.withOpacity(0.2)
-                                    : Colors.grey.withOpacity(0.15)),
+                                      ? AppColors.nutveSelectionGreen
+                                            .withOpacity(0.2)
+                                      : Colors.grey.withOpacity(0.15)),
                           ),
                         ),
                         child: Row(
@@ -272,7 +293,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               Icons.shopping_cart_outlined,
                               color: isSelected
                                   ? AppColors.nutveSelectionGreen
-                                  : (isDark ? Colors.grey[600] : Colors.grey[400]),
+                                  : (isDark
+                                        ? Colors.grey[600]
+                                        : Colors.grey[400]),
                               size: 22,
                             ),
                             const SizedBox(width: 12),
@@ -286,14 +309,18 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
-                                      color: isDark ? Colors.white : Colors.black87,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     "Faltan: ${item.missingQuantity} ${item.unit}",
                                     style: TextStyle(
-                                      color: isDark ? Colors.redAccent[100] : Colors.red,
+                                      color: isDark
+                                          ? Colors.redAccent[100]
+                                          : Colors.red,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                     ),
@@ -334,7 +361,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           child: Text(
                             "CANCELAR",
                             style: TextStyle(
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -751,13 +780,15 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 backgroundColor: Colors.white,
                 child: IconButton(
                   icon: const Icon(Icons.share, color: Colors.black),
-                  onPressed: () {},
+                  onPressed: _shareRecipe,
                 ),
               ),
               const SizedBox(width: 15),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: widget.recipe.imageUrl != null && widget.recipe.imageUrl!.isNotEmpty
+              background:
+                  widget.recipe.imageUrl != null &&
+                      widget.recipe.imageUrl!.isNotEmpty
                   ? Image.network(
                       widget.recipe.imageUrl!,
                       fit: BoxFit.cover,
@@ -839,161 +870,166 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                   const Divider(),
 
-                  if (!AuthController().hasSession()) _buildGuestLockedContent(isDark),
+                  if (!AuthController().hasSession())
+                    _buildGuestLockedContent(isDark),
                   if (AuthController().hasSession()) ...[
                     // Rating solo para logueados
                     StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: supabase
-                        .from('recipe_ratings')
-                        .stream(primaryKey: ['id'])
-                        .eq(
-                          'recipe_id',
-                          widget.recipe.id!,
-                        ), // recipe_id para recetas profesionales
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        debugPrint(
-                          'Error en stream de ratings: ${snapshot.error}',
-                        );
-                        return Text(
-                          'Error: ${snapshot.error}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.red,
+                      stream: supabase
+                          .from('recipe_ratings')
+                          .stream(primaryKey: ['id'])
+                          .eq(
+                            'recipe_id',
+                            widget.recipe.id!,
+                          ), // recipe_id para recetas profesionales
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          debugPrint(
+                            'Error en stream de ratings: ${snapshot.error}',
+                          );
+                          return Text(
+                            'Error: ${snapshot.error}',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.red,
+                            ),
+                          );
+                        }
+
+                        double displayRating = 0.0;
+                        if (snapshot.hasData) {
+                          final ratingsData = snapshot.data!;
+                          if (ratingsData.isNotEmpty) {
+                            final ratings = ratingsData
+                                .map((r) => (r['rating'] as num).toDouble())
+                                .toList();
+                            displayRating =
+                                ratings.reduce((a, b) => a + b) /
+                                ratings.length;
+                          }
+                        }
+
+                        return GestureDetector(
+                          onTap: _showRatingDialog,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                displayRating == 0.0
+                                    ? "Sin calificar (Toca para votar)"
+                                    : "${displayRating.toStringAsFixed(1)} Promedio (Toca para votar)",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
                           ),
                         );
-                      }
+                      },
+                    ),
 
-                      double displayRating = 0.0;
-                      if (snapshot.hasData) {
-                        final ratingsData = snapshot.data!;
-                        if (ratingsData.isNotEmpty) {
-                          final ratings = ratingsData
-                              .map((r) => (r['rating'] as num).toDouble())
-                              .toList();
-                          displayRating =
-                              ratings.reduce((a, b) => a + b) / ratings.length;
-                        }
-                      }
-
-                      return GestureDetector(
-                        onTap: _showRatingDialog,
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: Colors.amber,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              displayRating == 0.0
-                                  ? "Sin calificar (Toca para votar)"
-                                  : "${displayRating.toStringAsFixed(1)} Promedio (Toca para votar)",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white70 : Colors.black87,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+                    // Stats (Duración, Costo, Dificultad)
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildStat(
+                          Icons.schedule,
+                          "Duración",
+                          widget.recipe.cookingTime ?? "25 min",
                         ),
-                      );
-                    },
-                  ),
+                        _buildStat(Icons.payments, "Costo", "Bajo"),
+                        _buildStat(
+                          Icons.fitness_center,
+                          "Dificultad",
+                          widget.recipe.difficulty ?? "Fácil",
+                        ),
+                      ],
+                    ),
 
-                  // Stats (Duración, Costo, Dificultad)
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildStat(
-                        Icons.schedule,
-                        "Duración",
-                        widget.recipe.cookingTime ?? "25 min",
+                    // Tabs
+                    const SizedBox(height: 30),
+                    _buildTabBar(isDark),
+
+                    // Contenido condicional según pestaña seleccionada
+                    const SizedBox(height: 20),
+                    if (_selectedTabIndex == 0) ...[
+                      Text(
+                        "Ingredientes para 2 porciones",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
                       ),
-                      _buildStat(Icons.payments, "Costo", "Bajo"),
-                      _buildStat(
-                        Icons.fitness_center,
-                        "Dificultad",
-                        widget.recipe.difficulty ?? "Fácil",
+                      const SizedBox(height: 15),
+                      ...widget.recipe.ingredients.map(
+                        (ing) => _buildIngredientItem(ing),
                       ),
                     ],
-                  ),
-
-                  // Tabs
-                  const SizedBox(height: 30),
-                  _buildTabBar(isDark),
-
-                  // Contenido condicional según pestaña seleccionada
-                  const SizedBox(height: 20),
-                  if (_selectedTabIndex == 0) ...[
-                    Text(
-                      "Ingredientes para 2 porciones",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: isDark ? Colors.white : Colors.black,
+                    if (_selectedTabIndex == 1) ...[
+                      Text(
+                        "Paso a Paso",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 15),
-                    ...widget.recipe.ingredients.map(
-                      (ing) => _buildIngredientItem(ing),
-                    ),
-                  ],
-                  if (_selectedTabIndex == 1) ...[
-                    Text(
-                      "Paso a Paso",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
+                      const SizedBox(height: 20),
+                      ...widget.recipe.steps.asMap().entries.map(
+                        (entry) => _buildStepItem(entry.key + 1, entry.value),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    ...widget.recipe.steps.asMap().entries.map(
-                      (entry) => _buildStepItem(entry.key + 1, entry.value),
-                    ),
-                  ],
-                  if (_selectedTabIndex == 2)
-                    _buildNutritionContent(isDark),
+                    ],
+                    if (_selectedTabIndex == 2) _buildNutritionContent(isDark),
 
-                  const SizedBox(height: 100), // Espacio para el botón flotante
+                    const SizedBox(
+                      height: 100,
+                    ), // Espacio para el botón flotante
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
-        ),
-      ],
-    ),
+        ],
+      ),
 
       // Botón EMPEZAR A COCINAR fijo (Solo si hay sesión)
       bottomSheet: !AuthController().hasSession()
           ? null
           : Container(
-        padding: const EdgeInsets.all(20),
-        color: isDark
-            ? const Color(0xFF1A1A1A).withOpacity(0.95)
-            : Colors.white.withOpacity(0.9),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.nutveSelectionGreen,
-            minimumSize: const Size(double.infinity, 60),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
+              padding: const EdgeInsets.all(20),
+              color: isDark
+                  ? const Color(0xFF1A1A1A).withOpacity(0.95)
+                  : Colors.white.withOpacity(0.9),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveSelectionGreen,
+                  minimumSize: const Size(double.infinity, 60),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                onPressed: _onStartCooking,
+                child: const Text(
+                  "¡EMPEZAR A COCINAR!",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
             ),
-          ),
-          onPressed: _onStartCooking,
-          child: const Text(
-            "¡EMPEZAR A COCINAR!",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -1059,7 +1095,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         Container(
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+            color: isDark
+                ? Colors.white.withOpacity(0.05)
+                : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
               color: isDark ? Colors.white10 : Colors.grey.shade200,
@@ -1075,10 +1113,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               const SizedBox(height: 20),
               const Text(
                 'Contenido Protegido',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Text(
@@ -1117,7 +1152,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-   Widget _buildStepItem(int number, String instruction) {
+  Widget _buildStepItem(int number, String instruction) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 25),
       child: Row(
@@ -1305,4 +1340,3 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 }
-

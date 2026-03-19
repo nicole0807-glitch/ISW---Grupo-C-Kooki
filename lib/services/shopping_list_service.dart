@@ -6,44 +6,26 @@ class ShoppingListService {
   final _supabase = Supabase.instance.client;
 
   /// Inserta o actualiza los ingredientes faltantes en la tabla `shopping_list`.
-  /// Maneja duplicados manualmente: si ya existe un ítem no comprado para el
-  /// mismo ingrediente, actualiza la cantidad; si no, inserta uno nuevo.
+  /// Usa upsert con conflicto en (user_id, ingredient_id) para evitar duplicados.
   Future<void> addItems(List<MissingIngredient> items) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('Usuario no autenticado');
     if (items.isEmpty) return;
 
-    for (final ing in items) {
-      // Buscar si ya existe un ítem no comprado para este ingrediente
-      final existing = await _supabase
-          .from('shopping_list')
-          .select('id, quantity')
-          .eq('user_id', userId)
-          .eq('ingredient_id', ing.ingredientId)
-          .eq('is_bought', false)
-          .maybeSingle();
+    final rows = items
+        .map(
+          (ing) => ShoppingListItem(
+            userId: userId,
+            ingredientId: ing.ingredientId,
+            quantity: ing.missingQuantity,
+            unit: ing.unit,
+          ).toJson(),
+        )
+        .toList();
 
-      if (existing != null) {
-        // Actualizar cantidad
-        final currentQty = (existing['quantity'] as num).toDouble();
-        await _supabase
-            .from('shopping_list')
-            .update({'quantity': currentQty + ing.missingQuantity})
-            .eq('id', existing['id']);
-      } else {
-        // Insertar nuevo
-        await _supabase
-            .from('shopping_list')
-            .insert(
-              ShoppingListItem(
-                userId: userId,
-                ingredientId: ing.ingredientId,
-                quantity: ing.missingQuantity,
-                unit: ing.unit,
-              ).toJson(),
-            );
-      }
-    }
+    await _supabase
+        .from('shopping_list')
+        .upsert(rows, onConflict: 'user_id,ingredient_id');
   }
 
   /// Obtiene todos los ítems de la lista de compras del usuario actual.
