@@ -268,51 +268,66 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
 
                         const SizedBox(height: 40),
                         // Pantry Recommendations (Perfect Match Logic)
-                        Obx(() {
-                          final perfectMatches = _perfectMatchController.perfectMatches;
-                          final closeMatches = _perfectMatchController.closeMatches;
-                          final hasSession = AuthController().hasSession();
-                          
-                          if (!hasSession) {
+                        Builder(
+                          builder: (context) {
+                            final hasSession = AuthController().hasSession();
+                            
+                            if (!hasSession) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 35),
+                                  _buildSectionHeader('Puedes hacer ahora 🥘'),
+                                  _buildGuestSectionPlaceholder("Inicia sesión para ver qué puedes cocinar con lo que tienes en casa."),
+                                ],
+                              );
+                            }
+                            
+                            // ← CAMBIO: Dividir en dos Obx separados
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 35),
                                 _buildSectionHeader('Puedes hacer ahora 🥘'),
-                                _buildGuestSectionPlaceholder("Inicia sesión para ver qué puedes cocinar con lo que tienes en casa."),
+                                // ← Obx #1: solo para perfectMatches
+                                Obx(() {
+                                  final perfectMatches = _perfectMatchController.perfectMatches;
+                                  if (perfectMatches.isEmpty) {
+                                    return const Padding(
+                                      padding: EdgeInsets.only(top: 15),
+                                      child: Text("Suma ingredientes a tu Despensa para encontrar tu Partido Perfecto", style: TextStyle(color: Colors.grey)),
+                                    );
+                                  }
+                                  return Column(
+                                    children: [
+                                      const SizedBox(height: 15),
+                                      _buildMixedHorizontalList(perfectMatches),
+                                    ],
+                                  );
+                                }),
+                                
+                                const SizedBox(height: 35),
+                                _buildSectionHeader('Por completar (te falta 1 o 2) 🛒'),
+                                // ← Obx #2: solo para closeMatches
+                                Obx(() {
+                                  final closeMatches = _perfectMatchController.closeMatches;
+                                  if (closeMatches.isEmpty) {
+                                    return const Padding(
+                                      padding: EdgeInsets.only(top: 15),
+                                      child: Text("Sigue agregando a tu Despensa...", style: TextStyle(color: Colors.grey)),
+                                    );
+                                  }
+                                  return Column(
+                                    children: [
+                                      const SizedBox(height: 15),
+                                      _buildMixedHorizontalList(closeMatches),
+                                    ],
+                                  );
+                                }),
                               ],
                             );
-                          }
-                          
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 35),
-                              _buildSectionHeader('Puedes hacer ahora 🥘'),
-                              if (perfectMatches.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 15),
-                                  child: Text("Suma ingredientes a tu Despensa para encontrar tu Partido Perfecto", style: TextStyle(color: Colors.grey)),
-                                )
-                              else ...[
-                                const SizedBox(height: 15),
-                                _buildMixedHorizontalList(perfectMatches),
-                              ],
-                              
-                              const SizedBox(height: 35),
-                              _buildSectionHeader('Por completar (te falta 1 o 2) 🛒'),
-                              if (closeMatches.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 15),
-                                  child: Text("Sigue agregando a tu Despensa...", style: TextStyle(color: Colors.grey)),
-                                )
-                              else ...[
-                                const SizedBox(height: 15),
-                                _buildMixedHorizontalList(closeMatches),
-                              ],
-                            ],
-                          );
-                        }),
+                          },
+                        ),
 
                         // Snacks Section
                         Builder(
