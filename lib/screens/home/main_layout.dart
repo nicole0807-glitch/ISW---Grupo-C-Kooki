@@ -13,6 +13,7 @@ import '../assistant/assistant_screen.dart';
 import '../plan/premium_plan_screen.dart';
 import '../notifications/notifications_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../controllers/auth_controller.dart';
 
 // ─── DATA CLASS PARA ITEMS DE NAV ─────────────────────────────────────────────
 class _NavItem {
@@ -99,18 +100,6 @@ class MainLayoutState extends State<MainLayout> {
     // Tour no longer starts automatically in initState
   }
 
-  Future<void> _checkTourStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool hasSeenOnboarding =
-        prefs.getBool('has_seen_onboarding') ?? false;
-    if (!hasSeenOnboarding) {
-      setState(() {
-        _showTour = true;
-        _tourStep = 0;
-      });
-    }
-  }
-
   void startManualTour() {
     setState(() {
       _showTour = true;
@@ -184,48 +173,12 @@ class MainLayoutState extends State<MainLayout> {
     }
   }
 
-  void _showNotificationsPanel() {
-    if (!Get.isRegistered<PantryController>()) {
-      Get.snackbar('Info', 'No hay ingredientes cargados');
-      return;
-    }
-
-    final pantryController = Get.find<PantryController>();
-    final expiringIngredients =
-        pantryController.allIngredients
-            .where(
-              (i) =>
-                  i.expirationDate != null &&
-                  (i.daysUntilExpiration ?? 99) <= 7,
-            )
-            .toList()
-          ..sort(
-            (a, b) => (a.daysUntilExpiration ?? 99).compareTo(
-              b.daysUntilExpiration ?? 99,
-            ),
-          );
-
-    setState(() => _notificationCount = 0);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(ctx).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: _buildNotificationSheet(ctx, expiringIngredients),
-      ),
-    );
-  }
-
   // ─── BUILD ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final themeCtrl = context.watch<ThemeController>();
     final isDark = themeCtrl.isDarkMode;
-    final navBg = isDark ? const Color(0xFF1A2A1D) : AppColors.nutveDarkGreen;
+    final navBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
 
     return Scaffold(
       extendBody: false,
@@ -352,7 +305,7 @@ class MainLayoutState extends State<MainLayout> {
             backgroundImage: AssetImage('assets/logo.png'),
           ),
           const SizedBox(width: 12),
-          _buildAiBubble(),
+          if (AuthController().hasSession()) _buildAiBubble(),
         ],
       ),
       actions: [
@@ -433,7 +386,7 @@ class MainLayoutState extends State<MainLayout> {
           ),
         ),
         // ── Campana de Notificaciones ──────────────────────────────────
-        _buildNotificationIcon(),
+        if (AuthController().hasSession()) _buildNotificationIcon(),
         const SizedBox(width: 6),
       ],
     );
@@ -446,8 +399,8 @@ class MainLayoutState extends State<MainLayout> {
         color: navBg,
         boxShadow: [
           BoxShadow(
-            color: AppColors.nutveDarkGreen.withOpacity(isDark ? 0.5 : 0.3),
-            blurRadius: 20,
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+            blurRadius: 15,
             offset: const Offset(0, -4),
           ),
         ],
@@ -456,9 +409,39 @@ class MainLayoutState extends State<MainLayout> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_navItems.length, (i) => _buildNavItem(i)),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final segmentWidth = constraints.maxWidth / _navItems.length;
+              const bubbleWidth = 56.0;
+              final leftOffset =
+                  (_selectedIndex * segmentWidth) + (segmentWidth / 2) - (bubbleWidth / 2);
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Burbuja animada de fondo que desliza entre solapas (MatchedGeometryEffect type)
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                    left: leftOffset,
+                    top: 0,
+                    child: Container(
+                      width: bubbleWidth,
+                      height: 36, // Coincide con la altura estática del ícono
+                      decoration: BoxDecoration(
+                        color: AppColors.nutveSelectionGreen.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  // Fila de items interactivos encima
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: List.generate(_navItems.length, (i) => _buildNavItem(i)),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -466,10 +449,11 @@ class MainLayoutState extends State<MainLayout> {
   }
 
   Widget _buildNavItem(int index) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = _selectedIndex == index;
     final item = _navItems[index];
     const selectedColor = AppColors.nutveSelectionGreen;
-    final unselectedColor = Colors.white.withOpacity(0.55);
+    final unselectedColor = isDark ? Colors.white38 : Colors.grey.shade500;
 
     return Expanded(
       child: GestureDetector(
@@ -480,27 +464,18 @@ class MainLayoutState extends State<MainLayout> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Píldora con icono
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 16 : 10,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.nutveSelectionGreen.withOpacity(0.2)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Icon(
-                  isSelected ? item.activeIcon : item.icon,
-                  key: ValueKey(isSelected),
-                  size: isSelected ? 26 : 22,
-                  color: isSelected ? selectedColor : unselectedColor,
+            // Contenedor estático para mantener el alto del ícono y alinear la burbuja
+            SizedBox(
+              height: 36,
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: Icon(
+                    isSelected ? item.activeIcon : item.icon,
+                    key: ValueKey(isSelected),
+                    size: isSelected ? 26 : 22,
+                    color: isSelected ? selectedColor : unselectedColor,
+                  ),
                 ),
               ),
             ),
@@ -621,124 +596,6 @@ class MainLayoutState extends State<MainLayout> {
   }
 
   // ─── PANEL DE NOTIFICACIONES ──────────────────────────────────────────────
-  Widget _buildNotificationSheet(BuildContext ctx, List expiringIngredients) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.notifications_active_rounded,
-                  color: Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 15),
-              const Text(
-                'Vencimientos Próximos',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(ctx).hoverColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${expiringIngredients.length} items',
-                  style: TextStyle(
-                    color:
-                        Theme.of(ctx).textTheme.bodySmall?.color ??
-                        Colors.black54,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          const Divider(),
-          if (expiringIngredients.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    color: AppColors.nutveSelectionGreen,
-                    size: 50,
-                  ),
-                  SizedBox(height: 15),
-                  Text(
-                    '¡Todo al día! No tienes ingredientes por vencer.',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            )
-          else
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 350),
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.only(top: 10),
-                itemCount: expiringIngredients.length,
-                itemBuilder: (context, index) {
-                  final item = expiringIngredients[index];
-                  final isVerySoon = (item.daysUntilExpiration ?? 99) <= 2;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: isVerySoon
-                          ? Colors.red.withOpacity(0.05)
-                          : Colors.orange.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(
-                        color: isVerySoon
-                            ? Colors.red.withOpacity(0.3)
-                            : Colors.orange.withOpacity(0.3),
-                      ),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      title: Text(
-                        item.displayName,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'Vence en ${item.daysUntilExpiration} días',
-                      ),
-                      leading: Icon(
-                        isVerySoon
-                            ? Icons.warning_rounded
-                            : Icons.warning_amber_rounded,
-                        color: isVerySoon ? Colors.redAccent : Colors.orange,
-                        size: 30,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 class _BubbleClipper extends CustomClipper<Path> {

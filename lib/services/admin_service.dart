@@ -125,4 +125,111 @@ class AdminService {
       );
     }
   }
+  // ==========================================
+  // 5. SISTEMA DE REPORTES Y BANEO
+  // ==========================================
+
+  /// Reportar una receta por comportamiento inapropiado.
+  Future<void> reportRecipe({
+    required String recipeId,
+    required bool isCommunity,
+    required String reason,
+  }) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      print('🚩 Intentando reportar receta ID: $recipeId');
+      print('👤 Reporter ID: ${user?.id}');
+      print('📝 Motivo: $reason');
+
+      await _supabase.from('recipe_reports').insert({
+        'recipe_id': recipeId,
+        'is_community': isCommunity,
+        'reporter_id': user?.id,
+        'reason': reason,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      print('✅ Reporte insertado correctamente en recipe_reports');
+    } catch (e) {
+      print('❌ Error al reportar receta: $e');
+      throw Exception("No se pudo enviar el reporte: $e");
+    }
+  }
+
+  /// Obtener todas las recetas reportadas.
+  Future<List<Map<String, dynamic>>> getReportedRecipes() async {
+    try {
+      print('🔍 Obteniendo recetas reportadas...');
+      final response = await _supabase
+          .from('recipe_reports')
+          .select('*, reporter:Profile(full_name)')
+          .order('created_at', ascending: false);
+
+      List<Map<String, dynamic>> reports = List<Map<String, dynamic>>.from(
+        response,
+      );
+      print('📊 Reportes base recibidos: ${reports.length}');
+
+      // Enriquecer con información de la receta
+      for (var report in reports) {
+        final String recipeId = report['recipe_id'].toString();
+        final bool isCommunity = report['is_community'] as bool;
+
+        try {
+          final table = isCommunity ? 'UserRecipes' : 'Recipes';
+          final recipeData = await _supabase
+              .from(table)
+              .select('title')
+              .eq('id', recipeId)
+              .maybeSingle();
+
+          if (recipeData != null) {
+            report['recipe_title'] = recipeData['title'];
+          } else {
+            report['recipe_title'] = "Receta no encontrada (ID: $recipeId)";
+          }
+        } catch (e) {
+          print('⚠️ No se pudo cargar título para receta $recipeId: $e');
+          report['recipe_title'] = "Error al cargar título";
+        }
+      }
+
+      return reports;
+    } catch (e) {
+      print('❌ Error al obtener reportes: $e');
+      return [];
+    }
+  }
+
+  /// Banear (eliminar) una receta reportada.
+  Future<void> banRecipe(
+    dynamic recipeId,
+    bool isCommunity,
+    dynamic reportId,
+  ) async {
+    try {
+      // 1. Eliminar la receta
+      await deleteRecipe(recipeId, !isCommunity);
+
+      // 2. Eliminar el reporte asociado
+      await _supabase.from('recipe_reports').delete().eq('id', reportId);
+
+      // 3. Notificar globalmente (opcional)
+      await sendGlobalNotification(
+        title: "🛡️ Moderación de Contenido",
+        content: "Se ha eliminado una receta que no cumplía con las normas.",
+        type: 'moderation',
+      );
+    } catch (e) {
+      throw Exception("Error al banear receta: $e");
+    }
+  }
+
+  /// Descartar un reporte sin eliminar la receta.
+  Future<void> dismissReport(dynamic reportId) async {
+    try {
+      await _supabase.from('recipe_reports').delete().eq('id', reportId);
+    } catch (e) {
+      throw Exception("Error al descartar reporte: $e");
+    }
+  }
 }

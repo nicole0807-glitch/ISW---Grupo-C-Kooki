@@ -1,5 +1,5 @@
 class Recipe {
-  final int id;
+  final dynamic id;
   final double rating;
   final String title;
   final String? description;

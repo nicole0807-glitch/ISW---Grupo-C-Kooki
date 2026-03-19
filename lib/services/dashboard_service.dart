@@ -21,11 +21,10 @@ class DashboardService {
     return response;
   }
 
-  // 3. Obtener nuevos reportes (Usando tabla notifications como ejemplo)
+  // 3. Obtener nuevos reportes (Usando tabla recipe_reports)
   Future<int> getNewReportsCount() async {
-    // Si tienes un tipo específico de notificación para reportes, agrégalo al filtro
     final response = await _supabase
-        .from('notifications')
+        .from('recipe_reports')
         .count(CountOption.exact);
     return response;
   }

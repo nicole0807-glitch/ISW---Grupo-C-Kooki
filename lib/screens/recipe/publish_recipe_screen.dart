@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/app_colors.dart';
 import '../../models/user_recipe_model.dart';
 import '../../services/recipe_service.dart';
+import '../../services/image_service.dart';
+import '../../widgets/ingredient_selector.dart';
 
 class PublishRecipeScreen extends StatefulWidget {
   const PublishRecipeScreen({super.key});
@@ -94,14 +96,22 @@ class _PublishRecipeScreenState extends State<PublishRecipeScreen> {
   Future<void> _pickImage() async {
     final XFile? image = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
     );
     if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _selectedImageBytes = bytes;
-        _imageName = 'recipe_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      });
+      setState(() => _isUploading = true);
+      try {
+        final compressedBytes = await ImageService().compressRecipeImage(image);
+        if (compressedBytes != null) {
+          setState(() {
+            _selectedImageBytes = compressedBytes;
+            _imageName = 'recipe_${DateTime.now().millisecondsSinceEpoch}.webp';
+          });
+        }
+      } catch (e) {
+        _showAviso("Error al procesar la imagen", isError: true);
+      } finally {
+        setState(() => _isUploading = false);
+      }
     }
   }
 
@@ -431,11 +441,14 @@ class _PublishRecipeScreenState extends State<PublishRecipeScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       flex: 3,
-                                      child: _buildPremiumTextField(
-                                        nameCtrl,
-                                        "Ingrediente",
+                                      child: IngredientSelector(
                                         isDark: isDark,
-                                        hintColor: hintColor,
+                                        initialValue: nameCtrl.text,
+                                        onSelected: (val) {
+                                          setState(() {
+                                            nameCtrl.text = val.name;
+                                          });
+                                        },
                                       ),
                                     ),
                                     const SizedBox(width: 6),

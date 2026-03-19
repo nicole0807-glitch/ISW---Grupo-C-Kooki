@@ -54,8 +54,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+<<<<<<< HEAD
 /android/build
 
 # Android local config (rutas de SDK/JDK específicas de cada máquina)
 **/android/local.properties
 .gradle/
+=======
+/andorid/build
+>>>>>>> esteban2

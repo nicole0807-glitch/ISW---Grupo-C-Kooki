@@ -22,10 +22,8 @@ class IngredientMasterProvider extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      
       allIngredients.value = await _repository.fetchAllIngredients();
       filteredIngredients.value = allIngredients;
-      
       print('✅ ${allIngredients.length} ingredientes cargados en provider');
     } catch (e) {
       errorMessage.value = e.toString();

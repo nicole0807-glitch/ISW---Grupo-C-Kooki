@@ -42,6 +42,7 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => PremiumController()..loadStatus(),
         ),
+
       ],
       child: const NutveApp(),
     ),

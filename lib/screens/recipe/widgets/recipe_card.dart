@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import '../../../models/recipe_model.dart';
 import '../../../controllers/favorites_controller.dart';
 import '../../../utils/app_colors.dart';
-import '../recipe_detail_screen.dart';
+import '../../recipe/recipe_detail_screen.dart';
 import '../../recipe/user_recipe_detail_screen.dart';
 import '../../../models/user_recipe_model.dart';
+import '../../../controllers/auth_controller.dart';
 
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
@@ -90,63 +91,96 @@ class RecipeCard extends StatelessWidget {
                           height: 180,
                           width: double.infinity,
                           fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.nutveSelectionGreen.withOpacity(0.5),
+                                ),
+                              ),
+                            );
+                          },
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
                                 height: 180,
-                                color: Colors.grey[100],
-                                child: const Icon(
-                                  Icons.broken_image_rounded,
-                                  color: Colors.grey,
+                                width: double.infinity,
+                                alignment: Alignment.center,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white10
+                                    : Colors.grey.shade100,
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.white24
+                                      : Colors.grey.shade400,
+                                  size: 40,
                                 ),
                               ),
                         )
                       : Container(
                           height: 180,
-                          color: AppColors.nutveDarkGreen.withValues(
-                            alpha: 0.05,
-                          ),
-                          child: const Icon(
-                            Icons.restaurant_rounded,
-                            color: AppColors.nutveDarkGreen,
+                          width: double.infinity,
+                          alignment: Alignment.center,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white10
+                              : Colors.grey.shade100,
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white24
+                                : Colors.grey.shade400,
+                            size: 40,
                           ),
                         ),
                 ),
 
                 // BOTÓN DE CORAZÓN (Favoritos)
-                Positioned(
-                  top: 15,
-                  right: 15,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: () => favorites.toggleFavorite(recipe.id),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            isFavorite
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_outline_rounded,
-                            color: isFavorite ? Colors.redAccent : Colors.grey,
-                            size: 20,
+                if (AuthController().hasSession())
+                  Positioned(
+                    top: 15,
+                    right: 15,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF2C2C2E)
+                            : Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? 0.3
+                                    : 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => favorites.toggleFavorite(recipe.id),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              isFavorite
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_outline_rounded,
+                              color:
+                                  isFavorite ? Colors.redAccent : Colors.grey,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
                 // LABEL "TOP RATED"
                 if (isTopRated)

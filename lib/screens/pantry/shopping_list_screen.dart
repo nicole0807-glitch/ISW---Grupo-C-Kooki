@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/shopping_list_controller.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/ingredient_selector.dart';
 
 class ShoppingListScreen extends StatelessWidget {
   const ShoppingListScreen({super.key});
@@ -153,16 +154,15 @@ class ShoppingListScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
           title: const Text("Añadir Ingrediente"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: "Nombre del ingrediente",
-                ),
-                onChanged: (val) => name = val,
+              IngredientSelector(
+                isDark: isDark,
+                onSelected: (val) => name = val.name,
               ),
               Row(
                 children: [

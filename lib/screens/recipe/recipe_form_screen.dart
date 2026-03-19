@@ -1,11 +1,14 @@
+import 'dart:ui';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
-import '../../controllers/recipe_controller.dart';
-import '../../models/recipe_model.dart';
-import '../../models/ingredient_master.dart';
+import 'package:kooki/controllers/recipe_controller.dart';
+import 'package:kooki/models/recipe_model.dart';
+import 'package:kooki/widgets/ingredient_selector.dart';
+import 'package:kooki/models/ingredient_master.dart';
+import 'package:kooki/utils/app_colors.dart';
+import 'package:kooki/services/image_service.dart';
 
 class RecipeFormScreen extends StatefulWidget {
   final Recipe? recipe;
@@ -26,20 +29,16 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
 
   Uint8List? _selectedImageBytes;
   String? _selectedFileName;
+
   bool _isUrlMode = false;
 
-  final List<String> _difficultyOptions =["Fácil", "Media", "Difícil"];
-  List<RecipeIngredient> _ingredients =[];
-  List<String> _steps =[];
+  final List<String> _difficultyOptions = ["Fácil", "Media", "Difícil"];
+  List<RecipeIngredient> _ingredients = [];
+  List<String> _steps = [];
 
   @override
   void initState() {
     super.initState();
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RecipeAdminController>().loadMasterIngredients();
-    });
-
     final r = widget.recipe;
     _titleCtrl = TextEditingController(text: r?.title ?? '');
     _descCtrl = TextEditingController(text: r?.description ?? '');
@@ -71,16 +70,34 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     super.dispose();
   }
 
+  Future<void> _selectTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 0, minute: 30),
+      helpText: 'Selecciona el tiempo de preparación',
+    );
+    if (picked != null) {
+      setState(() {
+        final totalMinutes = picked.hour * 60 + picked.minute;
+        _timeCtrl.text = "$totalMinutes";
+      });
+    }
+  }
+
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+    );
 
     if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _selectedImageBytes = bytes;
-        _selectedFileName = image.name;
-      });
+      final compressedBytes = await ImageService().compressRecipeImage(image);
+      if (compressedBytes != null) {
+        setState(() {
+          _selectedImageBytes = compressedBytes;
+          _selectedFileName = 'recipe_${DateTime.now().millisecondsSinceEpoch}.webp';
+        });
+      }
     }
   }
 
@@ -97,14 +114,30 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     if ((!_isUrlMode && _selectedImageBytes == null) ||
         (_isUrlMode && _imgUrlCtrl.text.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Debes agregar una imagen (Sube un archivo o pega una URL)")),
+        SnackBar(
+          content: const Text(
+            "Debes agregar una imagen (Sube un archivo o pega una URL)",
+          ),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       );
       return;
     }
 
     if (_ingredients.isEmpty || _steps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Añade al menos un ingrediente y un paso")),
+        SnackBar(
+          content: const Text("Añade al menos un ingrediente y un paso"),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       );
       return;
     }
@@ -119,12 +152,14 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
       nutrition: widget.recipe?.nutrition ?? {},
       ingredients: _ingredients,
       steps: _steps,
-      tagIds: widget.recipe?.tagIds ??[],
+      tagIds: widget.recipe?.tagIds ?? [],
       rating: widget.recipe?.rating ?? 0.0,
       status: widget.recipe?.status ?? 'pendiente',
     );
 
-    final success = await context.read<RecipeAdminController>().createOrUpdateRecipe(
+    final success = await context
+        .read<RecipeAdminController>()
+        .createOrUpdateRecipe(
           recipeToProcess,
           isEdit: widget.recipe != null,
           imageBytes: _selectedImageBytes,
@@ -134,293 +169,731 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
     if (success && mounted) Navigator.pop(context);
   }
 
-  // --- NUEVA LÓGICA DEL DIÁLOGO (MÁS LIMPIA Y SEGURA) ---
   void _addIngredientDialog() async {
-    final controller = context.read<RecipeAdminController>();
-    
-    // Abrimos el Diálogo extraído y esperamos su resultado
-    final newIngredient = await showDialog<RecipeIngredient>(
-      context: context,
-      builder: (ctx) => _IngredientSearchDialog(controller: controller),
-    );
+    IngredientMaster? selectedInsumo;
+    String amount = '';
+    String unit = 'g';
 
-    // Si el usuario guardó un ingrediente, lo agregamos a la lista
-    if (newIngredient != null) {
-      setState(() {
-        _ingredients.add(newIngredient);
-      });
-    }
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: const Text(
+              "Añadir Ingrediente",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IngredientSelector(
+                    isDark: isDark,
+                    onSelected: (val) {
+                      setDialogState(() {
+                        selectedInsumo = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: _inputDecoration("Cantidad"),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => amount = v,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: _inputDecoration("Unidad (ej: g, ml, pza)"),
+                    onChanged: (v) => unit = v,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  "Cancelar",
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveDarkGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  if (selectedInsumo != null && amount.trim().isNotEmpty) {
+                    setState(() {
+                      _ingredients.add(
+                        RecipeIngredient(
+                          ingredientId: selectedInsumo!.ingredientId,
+                          name: selectedInsumo!.name,
+                          amount: double.tryParse(amount) ?? 0,
+                          unit: unit.trim(),
+                        ),
+                      );
+                    });
+                    Navigator.pop(ctx);
+                  }
+                },
+                child: const Text("Añadir"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(
+    String label, {
+    IconData? icon,
+    String? hint,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fillColor = isDark
+        ? Colors.white.withOpacity(0.05)
+        : Colors.grey.shade50;
+
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: fillColor,
+      prefixIcon: icon != null
+          ? Icon(icon, color: AppColors.nutveDarkGreen)
+          : null,
+      labelStyle: TextStyle(
+        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: AppColors.nutveDarkGreen,
+          width: 1.5,
+        ),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<RecipeAdminController>();
-    final accentGreen = const Color(0xFF13EC5B);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: isDark
+          ? const Color(0xFF121212)
+          : const Color(0xFFF8FAF9),
       appBar: AppBar(
-        title: Text(widget.recipe == null ? "Nueva Receta" : "Editar Receta"),
+        title: Text(
+          widget.recipe == null ? "Nueva Receta" : "Editar Receta",
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
         elevation: 0,
+        backgroundColor: isDark
+            ? Colors.black.withOpacity(0.6)
+            : Colors.white.withOpacity(0.8),
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
+        foregroundColor: isDark ? Colors.white : Colors.black87,
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children:[
-              Text(
-                "Imagen de la Receta",
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[800]),
-              ),
-              const SizedBox(height: 12),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(24, 110, 24, 140),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- SECCIÓN DE IMAGEN ---
+                  const Text(
+                    "Fotografía del platillo",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
 
-              Row(
-                children:[
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _isUrlMode = false),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: !_isUrlMode ? accentGreen.withOpacity(0.2) : Colors.transparent,
-                          border: Border.all(color: !_isUrlMode ? accentGreen : Colors.grey.shade300),
-                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-                        ),
-                        child: Center(
-                          child: Text("Subir Archivo",
-                            style: TextStyle(fontWeight: FontWeight.bold, color: !_isUrlMode ? Colors.green[800] : Colors.grey),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _isUrlMode = true),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _isUrlMode ? accentGreen.withOpacity(0.2) : Colors.transparent,
-                          border: Border.all(color: _isUrlMode ? accentGreen : Colors.grey.shade300),
-                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-                        ),
-                        child: Center(
-                          child: Text("Usar URL",
-                            style: TextStyle(fontWeight: FontWeight.bold, color: _isUrlMode ? Colors.green[800] : Colors.grey),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              if (!_isUrlMode) ...[
-                Center(
-                  child: GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      width: double.infinity,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: _selectedImageBytes != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.memory(_selectedImageBytes!, fit: BoxFit.cover, width: double.infinity),
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const[
-                                Icon(Icons.cloud_upload_outlined, size: 48, color: Colors.grey),
-                                SizedBox(height: 8),
-                                Text("Toca para subir desde galería", style: TextStyle(color: Colors.grey)),
-                              ],
-                            ),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                TextFormField(
-                  controller: _imgUrlCtrl,
-                  decoration: InputDecoration(
-                    labelText: "Pega el URL de la imagen",
-                    hintText: "https://ejemplo.com/imagen.jpg",
-                    prefixIcon: const Icon(Icons.link),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onChanged: (v) => setState(() {}),
-                ),
-                const SizedBox(height: 12),
-                if (_imgUrlCtrl.text.isNotEmpty)
+                  // 1. SELECTOR DE MODO
                   Container(
-                    width: double.infinity,
-                    height: 200,
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: isDark ? Colors.white10 : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.network(
-                        _imgUrlCtrl.text,
-                        fit: BoxFit.cover,
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isUrlMode = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isUrlMode
+                                    ? Theme.of(context).cardColor
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: !_isUrlMode
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Subir Archivo",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: !_isUrlMode
+                                      ? AppColors.nutveDarkGreen
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isUrlMode = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isUrlMode
+                                    ? Theme.of(context).cardColor
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: _isUrlMode
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Usar URL",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: _isUrlMode
+                                      ? AppColors.nutveDarkGreen
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 2. CONTENIDO CONDICIONAL (Muestra uno u otro)
+                  if (!_isUrlMode) ...[
+                    // MODO SUBIR ARCHIVO
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
                         width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) => Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const[
-                            Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text("URL inválido o imagen no encontrada", style: TextStyle(color: Colors.grey)),
-                          ],
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.05)
+                              : AppColors.nutveDarkGreen.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: _selectedImageBytes != null
+                                ? Colors.transparent
+                                : AppColors.nutveDarkGreen.withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: _selectedImageBytes != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: Image.memory(
+                                  _selectedImageBytes!,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(
+                                    Icons.add_photo_alternate_rounded,
+                                    size: 54,
+                                    color: AppColors.nutveDarkGreen,
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    "Toca para seleccionar de galería",
+                                    style: TextStyle(
+                                      color: AppColors.nutveDarkGreen,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ] else ...[
+                    // MODO URL
+                    TextFormField(
+                      controller: _imgUrlCtrl,
+                      decoration: _inputDecoration(
+                        "Enlace de la imagen",
+                        hint: "https://ejemplo.com/imagen.jpg",
+                        icon: Icons.link_rounded,
+                      ),
+                      onChanged: (v) => setState(() {}),
+                    ),
+                    if (_imgUrlCtrl.text.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          color: isDark
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.grey.shade100,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Image.network(
+                            _imgUrlCtrl.text,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.broken_image_rounded,
+                                      size: 48,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "URL inválido",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
+                    ],
+                  ],
 
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: "Título de la Receta",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                ),
-                validator: (v) => v!.isEmpty ? "El título es obligatorio" : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descCtrl,
-                decoration: const InputDecoration(
-                  labelText: "Descripción corta",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children:[
-                  Expanded(
-                    child: TextFormField(
-                      controller: _timeCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: "Tiempo (min)",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                  const SizedBox(height: 32),
+
+                  const Text(
+                    "Información Principal",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _titleCtrl,
+                    decoration: _inputDecoration(
+                      "Nombre de la Receta",
+                      icon: Icons.restaurant_menu_rounded,
+                    ),
+                    validator: (v) =>
+                        v!.trim().isEmpty ? "El título es obligatorio" : null,
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _descCtrl,
+                    decoration: _inputDecoration(
+                      "Breve descripción (opcional)",
+                      icon: Icons.short_text_rounded,
+                    ),
+                    maxLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _timeCtrl,
+                          readOnly: true,
+                          onTap: _selectTime,
+                          decoration: _inputDecoration(
+                            "Tiempo (min)",
+                            icon: Icons.timer_rounded,
+                          ),
+                          validator: (v) =>
+                              v!.trim().isEmpty ? "Requerido" : null,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _difficulty,
-                      items: _difficultyOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: (v) => setState(() => _difficulty = v),
-                      decoration: const InputDecoration(
-                        labelText: "Dificultad",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                      ),
-                      validator: (v) => v == null ? "Requerido" : null,
-                    ),
-                  ),
-                ],
-              ),
-
-              const Divider(height: 40),
-              _sectionHeader("Ingredientes", _addIngredientDialog),
-              ..._ingredients.asMap().entries.map(
-                (e) => Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: ListTile(
-                    dense: true,
-                    title: Text(e.value.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text("${e.value.amount} ${e.value.unit}"),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                      onPressed: () => setState(() => _ingredients.removeAt(e.key)),
-                    ),
-                  ),
-                ),
-              ),
-
-              const Divider(height: 40),
-              _sectionHeader("Pasos de Preparación", () {
-                String step = '';
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text("Nuevo Paso"),
-                    content: TextField(
-                      onChanged: (v) => step = v,
-                      decoration: const InputDecoration(hintText: "Escribe la instrucción..."),
-                    ),
-                    actions:[
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
-                      ElevatedButton(
-                        onPressed: () {
-                          if (step.isNotEmpty) setState(() => _steps.add(step));
-                          Navigator.pop(ctx);
-                        },
-                        child: const Text("Añadir"),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _difficulty,
+                          icon: const Icon(Icons.arrow_drop_down_rounded),
+                          dropdownColor: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          items: _difficultyOptions
+                              .map(
+                                (e) =>
+                                    DropdownMenuItem(value: e, child: Text(e)),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _difficulty = v),
+                          decoration: _inputDecoration(
+                            "Dificultad",
+                            icon: Icons.speed_rounded,
+                          ),
+                          validator: (v) => v == null ? "Requerido" : null,
+                        ),
                       ),
                     ],
                   ),
-                );
-              }),
-              ReorderableListView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                onReorder: (oldIdx, newIdx) {
-                  setState(() {
-                    if (oldIdx < newIdx) newIdx -= 1;
-                    final item = _steps.removeAt(oldIdx);
-                    _steps.insert(newIdx, item);
-                  });
-                },
-                children:[
-                  for (int i = 0; i < _steps.length; i++)
-                    ListTile(
-                      key: ValueKey("step_$i"),
-                      leading: CircleAvatar(
-                        backgroundColor: accentGreen,
-                        radius: 12,
-                        child: Text("${i + 1}", style: const TextStyle(fontSize: 10, color: Colors.black, fontWeight: FontWeight.bold)),
-                      ),
-                      title: Text(_steps[i]),
-                      trailing: const Icon(Icons.drag_handle, color: Colors.grey),
+
+                  const SizedBox(height: 32),
+
+                  _sectionHeader("Ingredientes", _addIngredientDialog),
+                  const SizedBox(height: 12),
+
+                  if (_ingredients.isEmpty)
+                    _buildEmptyState(
+                      "Sin ingredientes",
+                      "Añade los insumos necesarios para tu receta.",
                     ),
+
+                  ..._ingredients.asMap().entries.map(
+                    (e) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: isDark
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.nutveDarkGreen.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.eco_rounded,
+                            color: AppColors.nutveDarkGreen,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          e.value.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          "${e.value.amount} ${e.value.unit}",
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(
+                            Icons.remove_circle_outline_rounded,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () =>
+                              setState(() => _ingredients.removeAt(e.key)),
+                          tooltip: "Eliminar ingrediente",
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  _sectionHeader("Pasos de Preparación", () {
+                    String step = '';
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        title: const Text(
+                          "Nuevo Paso",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        content: TextField(
+                          onChanged: (v) => step = v,
+                          decoration: _inputDecoration(
+                            "Escribe la instrucción...",
+                          ),
+                          maxLines: 3,
+                          textCapitalization: TextCapitalization.sentences,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text(
+                              "Cancelar",
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.nutveDarkGreen,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              if (step.trim().isNotEmpty)
+                                setState(() => _steps.add(step.trim()));
+                              Navigator.pop(ctx);
+                            },
+                            child: const Text("Añadir"),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 12),
+
+                  if (_steps.isEmpty)
+                    _buildEmptyState(
+                      "Sin instrucciones",
+                      "Registra el paso a paso detallado.",
+                    ),
+
+                  ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _steps.length,
+                    onReorder: (oldIdx, newIdx) {
+                      setState(() {
+                        if (oldIdx < newIdx) newIdx -= 1;
+                        final item = _steps.removeAt(oldIdx);
+                        _steps.insert(newIdx, item);
+                      });
+                    },
+                    itemBuilder: (context, i) {
+                      return Container(
+                        key: ValueKey("step_$i"),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: isDark
+                              ? []
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.nutveDarkGreen,
+                            radius: 14,
+                            child: Text(
+                              "${i + 1}",
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            _steps[i],
+                            style: const TextStyle(height: 1.4),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _steps.removeAt(i)),
+                              ),
+                              Icon(
+                                Icons.drag_indicator_rounded,
+                                color: Colors.grey.shade400,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
                 ],
               ),
-
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentGreen,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
+          // --- FLOATING ACTION BUTTON AREA (PREMIUM) ---
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  padding: const EdgeInsets.only(
+                    left: 24,
+                    right: 24,
+                    bottom: 32,
+                    top: 16,
                   ),
-                  onPressed: controller.isLoading ? null : _submit,
-                  child: controller.isLoading
-                      ? const CircularProgressIndicator(color: Colors.black)
-                      : Text(
-                          widget.recipe == null ? "CREAR RECETA" : "ACTUALIZAR RECETA",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.black.withOpacity(0.6)
+                        : Colors.white.withOpacity(0.8),
+                    border: Border(
+                      top: BorderSide(
+                        color: isDark
+                            ? Colors.white10
+                            : Colors.black.withOpacity(0.05),
+                      ),
+                    ),
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF13EC5B), Color(0xFF0FCE4E)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF13EC5B).withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 6),
                         ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: controller.isLoading ? null : _submit,
+                        child: Center(
+                          child: controller.isLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.black,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      widget.recipe == null
+                                          ? Icons.auto_awesome_rounded
+                                          : Icons.save_rounded,
+                                      color: Colors.black87,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.recipe == null
+                                          ? "PUBLICAR RECETA"
+                                          : "GUARDAR CAMBIOS",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16,
+                                        letterSpacing: 1.0,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -428,215 +901,74 @@ class _RecipeFormScreenState extends State<RecipeFormScreen> {
   Widget _sectionHeader(String title, VoidCallback onAdd) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children:[
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        IconButton(
-          onPressed: onAdd,
-          icon: const Icon(Icons.add_circle, color: Color(0xFF13EC5B), size: 28),
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-      ],
-    );
-  }
-}
-// =========================================================================
-// WIDGET EXTRAÍDO PARA EVITAR FUGAS DE MEMORIA Y PANTALLAS BLANCAS
-// =========================================================================
-class _IngredientSearchDialog extends StatefulWidget {
-  final RecipeAdminController controller;
-
-  const _IngredientSearchDialog({Key? key, required this.controller}) : super(key: key);
-
-  @override
-  State<_IngredientSearchDialog> createState() => _IngredientSearchDialogState();
-}
-
-class _IngredientSearchDialogState extends State<_IngredientSearchDialog> {
-  late TextEditingController _searchCtrl;
-  late TextEditingController _amountCtrl;
-
-  String _selectedUnit = 'g';
-  final List<String> _units = ['g', 'kg', 'mL', 'L', 'Piezas', 'Tazas'];
-
-  List<IngredientMaster> _searchResults =[];
-  bool _showDropdown = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchCtrl = TextEditingController();
-    _amountCtrl = TextEditingController();
-    _searchResults = widget.controller.masterIngredients;
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    _amountCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text("Añadir Ingrediente"),
-      content: SizedBox(
-        width: double.maxFinite, 
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children:[
-              TextField(
-                controller: _searchCtrl,
-                // 🟢 1. MANEJO MANUAL: Abre la lista al tocar el campo
-                onTap: () {
-                  setState(() {
-                    _showDropdown = true;
-                    _searchResults = widget.controller.searchMasterIngredients(_searchCtrl.text);
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: "Nombre del ingrediente",
-                  hintText: "Buscar o crear nuevo...",
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  suffixIcon: _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() {
-                              _searchCtrl.clear();
-                              _searchResults = widget.controller.masterIngredients;
-                              _showDropdown = true;
-                            });
-                          },
-                        )
-                      : const Icon(Icons.arrow_drop_down),
-                ),
-                onChanged: (query) {
-                  setState(() {
-                    _showDropdown = true;
-                    _searchResults = widget.controller.searchMasterIngredients(query);
-                  });
-                },
-              ),
-
-              if (_showDropdown && _searchResults.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  constraints: const BoxConstraints(maxHeight: 180),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow:[
-                      BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 3)),
-                    ],
+        Material(
+          color: AppColors.nutveDarkGreen.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onAdd,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.add_rounded,
+                    color: AppColors.nutveDarkGreen,
+                    size: 20,
                   ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    // 🟢 2. FÍSICA DE SCROLL: Evita que el scroll cancele el toque
-                    physics: const ClampingScrollPhysics(),
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, index) {
-                      final item = _searchResults[index];
-                      return ListTile(
-                        dense: true,
-                        title: Text(item.name),
-                        onTap: () {
-                          // 🟢 3. SELECCIÓN SEGURA: Cierra el teclado y la lista
-                          FocusScope.of(context).unfocus();
-                          setState(() {
-                            _searchCtrl.text = item.name;
-                            _showDropdown = false;
-                          });
-                        },
-                      );
-                    },
-                  ),
-                ),
-
-              if (_showDropdown && _searchResults.isEmpty && _searchCtrl.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Row(
-                    children:[
-                      const Icon(Icons.info_outline, color: Colors.blue, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'El ingrediente es nuevo. Se creará automáticamente al guardar.',
-                          style: TextStyle(color: Colors.blue[700], fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 16),
-
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children:[
-                  Expanded(
-                    flex: 3,
-                    child: TextField(
-                      controller: _amountCtrl,
-                      keyboardType: TextInputType.number,
-                      // 🟢 4. CERRAR LISTA: Si tocan la cantidad, ocultamos las sugerencias
-                      onTap: () {
-                        if (_showDropdown) {
-                          setState(() => _showDropdown = false);
-                        }
-                      },
-                      decoration: InputDecoration(
-                        labelText: "Cantidad",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 4,
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedUnit,
-                      decoration: InputDecoration(
-                        labelText: "Unidad",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      items: _units.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
-                      onChanged: (v) {
-                        if (v != null) setState(() => _selectedUnit = v);
-                      },
+                  SizedBox(width: 4),
+                  Text(
+                    "Añadir",
+                    style: TextStyle(
+                      color: AppColors.nutveDarkGreen,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
-      actions:[
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-        ElevatedButton(
-          onPressed: () {
-            final name = _searchCtrl.text.trim();
-            final amount = _amountCtrl.text.trim();
-            if (name.isNotEmpty && amount.isNotEmpty) {
-              Navigator.pop(
-                context,
-                RecipeIngredient(
-                  ingredientId: 0,
-                  name: name,
-                  amount: double.tryParse(amount) ?? 0,
-                  unit: _selectedUnit,
-                ),
-              );
-            }
-          },
-          child: const Text("Añadir"),
-        ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState(String title, String subtitle) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white.withOpacity(0.02)
+            : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withOpacity(0.5),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.inbox_rounded, size: 40, color: Colors.grey.shade400),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+        ],
+      ),
     );
   }
 }

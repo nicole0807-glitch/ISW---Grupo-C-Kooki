@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:ui';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 import '../../utils/app_colors.dart';
@@ -30,8 +28,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   // Animation for background gradient
   late AnimationController _bgAnimController;
-  late Animation<Color?> _color1Animation;
-  late Animation<Color?> _color2Animation;
 
   @override
   void initState() {
@@ -58,16 +54,6 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 5),
     )..repeat(reverse: true);
-
-    _color1Animation = ColorTween(
-      begin: const Color(0xFF0D1B2A), // Dark Navy
-      end: const Color(0xFF1B263B), // Lighter Navy
-    ).animate(_bgAnimController);
-
-    _color2Animation = ColorTween(
-      begin: AppColors.nutveDarkGreen.withOpacity(0.5),
-      end: AppColors.nutveSelectionGreen.withOpacity(0.3),
-    ).animate(_bgAnimController);
   }
 
   @override
@@ -180,171 +166,164 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : AppColors.nutveBgGray;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
     return Scaffold(
+      backgroundColor: bgColor,
       body: Stack(
-        fit: StackFit.expand,
         children: [
-          // 1. Dynamic Gradient Background Animation
-          AnimatedBuilder(
-            animation: _bgAnimController,
-            builder: (context, child) {
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _color1Animation.value ?? const Color(0xFF0D1B2A),
-                      _color2Animation.value ?? AppColors.nutveSelectionGreen,
-                      const Color(0xFF000000), // Fades to black at the bottom
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // 2. Extra overlay texture or subtle dots can go here (optional)
-          Container(color: Colors.black.withOpacity(0.1)),
-
-          // 3. Contenido Principal con Animación
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        padding: const EdgeInsets.all(35),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(
-                            0.06,
-                          ), // Glass effect optimized for dynamic background
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(
-                              0.15,
-                            ), // Subtle border
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 40,
-                              spreadRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Logo o Título
-                            const Text(
-                              "KOOKI",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 42,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 8,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              "Bienvenido de nuevo.",
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            const SizedBox(height: 40),
-
-                            // Campos de Texto Premium
-                            _buildPremiumField(
-                              "Usuario",
-                              Icons.person_outline,
-                              _usernameController,
-                            ),
-                            const SizedBox(height: 20),
-                            _buildPremiumField(
-                              "Contraseña",
-                              Icons.lock_outline,
-                              _passwordController,
-                              isPass: true,
-                            ),
-                            const SizedBox(height: 40),
-
-                            // Botón de Ingreso
-                            _isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white,
-                                  )
-                                : _buildLoginButton(),
-
-                            const SizedBox(height: 25),
-
-                            // Link de Registro
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  PageRouteBuilder(
-                                    pageBuilder:
-                                        (
-                                          context,
-                                          animation,
-                                          secondaryAnimation,
-                                        ) => const RegisterScreen(),
-                                    transitionsBuilder:
-                                        (
-                                          context,
-                                          animation,
-                                          secondaryAnimation,
-                                          child,
-                                        ) {
-                                          return FadeTransition(
-                                            opacity: animation,
-                                            child: child,
-                                          );
-                                        },
-                                  ),
-                                );
-                              },
-                              style: TextButton.styleFrom(
-                                splashFactory: NoSplash.splashFactory,
-                              ),
-                              child: RichText(
-                                text: TextSpan(
-                                  text: "¿No tienes cuenta? ",
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontSize: 14,
-                                  ),
-                                  children: const [
-                                    TextSpan(
-                                      text: "Crear perfil",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
+          // 1. Contenido Principal
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 20),
+                        // Logo (Fuera de la tarjeta)
+                        Hero(
+                          tag: 'logo',
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
                                 ),
+                              ],
+                              image: const DecorationImage(
+                                image: AssetImage('assets/logo.png'),
+                                fit: BoxFit.cover,
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 25),
+                        Text(
+                          "KOOKI",
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColors.nutveSelectionGreen
+                                : AppColors.nutveDarkGreen,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 6,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Bienvenido de nuevo.",
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+
+                        // Tarjeta de Formulario (Sólida)
+                        Container(
+                          padding: const EdgeInsets.all(30),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                                blurRadius: 30,
+                                offset: const Offset(0, 15),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _buildPremiumField(
+                                "Usuario",
+                                Icons.person_outline,
+                                _usernameController,
+                                isDark,
+                              ),
+                              const SizedBox(height: 20),
+                              _buildPremiumField(
+                                "Contraseña",
+                                Icons.lock_outline,
+                                _passwordController,
+                                isDark,
+                                isPass: true,
+                              ),
+                              const SizedBox(height: 35),
+                              _isLoading
+                                  ? const CircularProgressIndicator(
+                                      color: AppColors.nutveSelectionGreen,
+                                    )
+                                  : _buildLoginButton(),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 35),
+
+                        // Link de Registro
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            );
+                          },
+                          child: RichText(
+                            text: TextSpan(
+                              text: "¿No tienes cuenta? ",
+                              style: TextStyle(
+                                color: isDark ? Colors.white60 : Colors.black45,
+                                fontSize: 14,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: "Crear perfil",
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : AppColors.nutveDarkGreen,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
                 ),
+              ),
+            ),
+          ),
+
+          // 2. Botón para volver (Estilo Receta)
+          Positioned(
+            top: 50,
+            left: 20,
+            child: CircleAvatar(
+              backgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 20,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                onPressed: () => Navigator.pop(context),
               ),
             ),
           ),
@@ -356,38 +335,45 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildPremiumField(
     String label,
     IconData icon,
-    TextEditingController? controller, {
+    TextEditingController? controller,
+    bool isDark, {
     bool isPass = false,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08), // Very subtle fill
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade200,
+        ),
       ),
       child: TextField(
         controller: controller,
         obscureText: isPass ? _obscurePassword : false,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+        style: TextStyle(
+          color: isDark ? Colors.white : Colors.black87,
+          fontSize: 16,
+        ),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.white70),
+          prefixIcon: Icon(
+            icon,
+            color: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
+          ),
           suffixIcon: isPass
               ? IconButton(
                   icon: Icon(
                     _obscurePassword
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    color: Colors.white70,
+                    color: isDark ? Colors.white38 : Colors.grey,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 )
               : null,
           labelText: label,
-          labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+          labelStyle: TextStyle(
+            color: isDark ? Colors.white38 : Colors.grey.shade600,
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
@@ -404,11 +390,7 @@ class _LoginScreenState extends State<LoginScreen>
       height: 55,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [AppColors.nutveSelectionGreen, AppColors.nutveDarkGreen],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.nutveSelectionGreen,
         boxShadow: [
           BoxShadow(
             color: AppColors.nutveSelectionGreen.withOpacity(0.3),

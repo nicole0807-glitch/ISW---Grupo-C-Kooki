@@ -9,7 +9,9 @@ import '../../controllers/shopping_list_controller.dart';
 import '../../models/recipe_model.dart';
 import '../../controllers/cooking_controller.dart';
 import '../../models/cooking_models.dart';
-import '../../shared/widgets/nutve_navigation_hint.dart';
+import '../../services/admin_service.dart';
+import '../../controllers/auth_controller.dart';
+import '../auth/login_screen.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final Recipe recipe;
@@ -63,6 +65,225 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         );
       }
     }
+  }
+
+  void _showReportDialog() {
+    final reasonController = TextEditingController();
+    bool isSending = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text('Reportar Receta'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: reasonController,
+                    enabled: !isSending,
+                    decoration: const InputDecoration(
+                      hintText: 'Describe el motivo del reporte...',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSending ? null : () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: isSending
+                      ? null
+                      : () async {
+                          if (reasonController.text.isNotEmpty) {
+                            setDialogState(() => isSending = true);
+                            try {
+                              await AdminService()
+                                  .reportRecipe(
+                                    recipeId: widget.recipe.id.toString(),
+                                    isCommunity: false,
+                                    reason: reasonController.text,
+                                  )
+                                  .timeout(const Duration(seconds: 10));
+
+                              if (mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Reporte enviado correctamente',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                setDialogState(() => isSending = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                  ),
+                  child: isSending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Enviar Reporte'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _onStartCooking() async {
+    final result = await _cookingController.validateInventory(widget.recipe.id);
+    if (!mounted) return;
+
+    if (result == null) return;
+
+    if (result.canCook) {
+      final success = await _cookingController.startCooking(widget.recipe.id);
+      if (success && mounted) {
+        // Mode Cook
+      }
+    } else {
+      _showMissingIngredientsSheet(result.missing);
+    }
+  }
+
+  void _showMissingIngredientsSheet(List<MissingIngredient> missing) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+            const SizedBox(height: 16),
+            Text(
+              "Faltan Ingredientes",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: missing.length,
+                itemBuilder: (context, index) {
+                  final item = missing[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.red.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: isDark ? Colors.white10 : Colors.red.withOpacity(0.1),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          item.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "Faltan: ${item.missingQuantity} ${item.unit}",
+                              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text("CANCELAR", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC7FF29),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                      onPressed: () {
+                        // _shoppingListController.addMissingIngredients(missing);
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Ingredientes faltantes añadidos a la lista de compras")),
+                        );
+                      },
+                      child: const Text("A LA LISTA", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showRatingDialog() {
@@ -135,224 +356,141 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  void _onStartCooking() async {
-    // 1. Validar inventario
-    final result = await _cookingController.validateInventory(widget.recipe.id);
-    if (!mounted) return;
+  Future<void> _startCooking() async {
+    final pantryController = Get.find<PantryController>();
+    final shoppingController = Get.put(ShoppingListController());
 
-    if (result == null) return;
+    List<Map<String, dynamic>> missingIngredients = [];
+    List<Map<String, dynamic>> matchedIngredients = [];
 
-    if (result.canCook) {
-      // 2. Si tiene todo, ejecutar descuento directamente
-      final success = await _cookingController.startCooking(widget.recipe.id);
-      if (success && mounted) {
-        // Podríamos navegar a un modo "Cook Mode" aquí
+    // Simple matching algorithm
+    for (var recipeIng in widget.recipe.ingredients) {
+      double requiredAmount = recipeIng.amount;
+
+      final recipeNameLower = recipeIng.name.toLowerCase();
+      // Find matching item in pantry
+      final pantryIndex = pantryController.allIngredients.indexWhere(
+        (pi) =>
+            pi.displayName.toLowerCase().contains(recipeNameLower) ||
+            recipeNameLower.contains(pi.displayName.toLowerCase()),
+      );
+
+      if (pantryIndex != -1) {
+        final pantryIng = pantryController.allIngredients[pantryIndex];
+        if (pantryIng.quantity >= requiredAmount) {
+          // Has enough
+          matchedIngredients.add({
+            'pantryIng': pantryIng,
+            'amountToDeduct': requiredAmount,
+          });
+        } else {
+          // Not enough quantity
+          missingIngredients.add({
+            'name': recipeIng.name,
+            'amount': requiredAmount - pantryIng.quantity,
+            'unit': recipeIng.unit,
+          });
+        }
+      } else {
+        // Completely missing
+        missingIngredients.add({
+          'name': recipeIng.name,
+          'amount': requiredAmount,
+          'unit': recipeIng.unit,
+        });
       }
-    } else {
-      // 3. Mostrar interfaz de faltantes
-      _showMissingIngredientsSheet(result.missing);
     }
-  }
 
-  void _showMissingIngredientsSheet(List<MissingIngredient> missing) {
-    Set<int> selectedIndices = {
-      for (int i = 0; i < missing.length; i++) i,
-    }; // Seleccionar todos por defecto
+    if (missingIngredients.isNotEmpty) {
+      // Show dialog to add to cart
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Ingredientes Faltantes'),
+            content: Text(
+              'No tienes suficientes ingredientes en tu despensa para cocinar esta receta. Te faltan ${missingIngredients.length} ingredientes.\n\n¿Deseas añadirlos a tu lista de la compra?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveSelectionGreen,
+                ),
+                onPressed: () {
+                  shoppingController.addMissingIngredients(missingIngredients);
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  'Añadir al Carrito',
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      // Show confirmation to deduct
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('¡Empezar a Cocinar!'),
+            content: const Text(
+              'Tienes todos los ingredientes listos. ¿Deseas empezar a cocinar y descontar los ingredientes usados de tu despensa?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveSelectionGreen,
+                ),
+                onPressed: () {
+                  Navigator.pop(context, true);
+                },
+                child: const Text(
+                  'Cocinar',
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+            ],
+          );
+        },
+      );
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      if (confirm == true) {
+        for (var match in matchedIngredients) {
+          try {
+            final pantryIng = match['pantryIng'];
+            final toDeduct = match['amountToDeduct'];
+            pantryIng.quantity = pantryIng.quantity - toDeduct;
+            await pantryController.updateIngredient(pantryIng);
+          } catch (e) {
+            print('Error deducting intedient: $e');
+          }
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                '¡A cocinar! Ingredientes descontados de tu despensa.',
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.warning_amber_rounded,
-                        color: AppColors.nutveAlertRed,
-                        size: 30,
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        "Faltan ingredientes",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Agrégalos a tu lista de compras para poder cocinar esta receta pronto.",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: missing.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final item = missing[index];
-                        final isSelected = selectedIndices.contains(index);
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey[100]!),
-                            borderRadius: BorderRadius.circular(15),
-                            color: isSelected
-                                ? AppColors.nutveSelectionGreen.withOpacity(
-                                    0.05,
-                                  )
-                                : Colors.transparent,
-                          ),
-                          child: Row(
-                            children: [
-                              Checkbox(
-                                value: isSelected,
-                                activeColor: AppColors.nutveSelectionGreen,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                onChanged: (val) {
-                                  setModalState(() {
-                                    if (val == true) {
-                                      selectedIndices.add(index);
-                                    } else {
-                                      selectedIndices.remove(index);
-                                    }
-                                  });
-                                },
-                              ),
-                              const Icon(
-                                Icons.shopping_cart,
-                                color: Colors.black,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      "falta ${item.missingQuantity} ${item.unit}",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextButton.icon(
-                    onPressed: () {
-                      setModalState(() {
-                        if (selectedIndices.length == missing.length) {
-                          selectedIndices.clear();
-                        } else {
-                          selectedIndices = {
-                            for (int i = 0; i < missing.length; i++) i,
-                          };
-                        }
-                      });
-                    },
-                    icon: Icon(
-                      selectedIndices.length == missing.length
-                          ? Icons.deselect
-                          : Icons.select_all,
-                      color: AppColors.nutveSelectionGreen,
-                      size: 20,
-                    ),
-                    label: Text(
-                      selectedIndices.length == missing.length
-                          ? "Deseleccionar todos"
-                          : "Seleccionar todos",
-                      style: const TextStyle(
-                        color: AppColors.nutveSelectionGreen,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Obx(
-                    () => ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.nutveSelectionGreen,
-                        minimumSize: const Size(double.infinity, 60),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: _cookingController.isAddingToCart.value
-                          ? null
-                          : () async {
-                              final toAdd = selectedIndices
-                                  .map((i) => missing[i])
-                                  .toList();
-                              final success = await _cookingController
-                                  .addToShoppingList(toAdd);
-                              if (success && mounted) {
-                                Navigator.pop(context);
-                                NutveNavigationHint.show(context);
-                              }
-                            },
-                      child: _cookingController.isAddingToCart.value
-                          ? const CircularProgressIndicator(color: Colors.black)
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Agregar al carrito",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(
-                                  Icons.shopping_cart,
-                                  color: Colors.black,
-                                  size: 22,
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+              backgroundColor: AppColors.nutveSelectionGreen,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -443,9 +581,29 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               const SizedBox(width: 15),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: widget.recipe.imageUrl != null
-                  ? Image.network(widget.recipe.imageUrl!, fit: BoxFit.cover)
-                  : Container(color: Colors.grey[200]),
+              background: widget.recipe.imageUrl != null && widget.recipe.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      widget.recipe.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        alignment: Alignment.center,
+                        color: isDark ? Colors.white10 : Colors.grey.shade100,
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: isDark ? Colors.white24 : Colors.grey.shade400,
+                          size: 60,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      alignment: Alignment.center,
+                      color: isDark ? Colors.white10 : Colors.grey.shade100,
+                      child: Icon(
+                        Icons.image_outlined,
+                        color: isDark ? Colors.white24 : Colors.grey.shade400,
+                        size: 60,
+                      ),
+                    ),
             ),
           ),
 
@@ -462,14 +620,59 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título y Rating
-                  StreamBuilder<List<Map<String, dynamic>>>(
+                  // Título siempre visible
+                  Text(
+                    widget.recipe.title,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF1B4332),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Perfil del Autor siempre visible (pero sin botón de seguir para invitados)
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      radius: 25,
+                      backgroundImage: NetworkImage(
+                        "https://via.placeholder.com/150",
+                      ),
+                    ),
+                    title: const Text(
+                      "Dra. Sarah Jenkins",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text(
+                      "Nutricionista Principal • Receta Premium",
+                    ),
+                    trailing: AuthController().hasSession()
+                        ? TextButton(
+                            onPressed: () {},
+                            child: const Text(
+                              "SEGUIR",
+                              style: TextStyle(
+                                color: AppColors.nutveSelectionGreen,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  const Divider(),
+
+                  if (!AuthController().hasSession()) _buildGuestLockedContent(isDark),
+                  if (AuthController().hasSession()) ...[
+                    // Rating solo para logueados
+                    StreamBuilder<List<Map<String, dynamic>>>(
                     stream: supabase
                         .from('recipe_ratings')
                         .stream(primaryKey: ['id'])
                         .eq(
                           'recipe_id',
-                          widget.recipe.id,
+                          widget.recipe.id!,
                         ), // recipe_id para recetas profesionales
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
@@ -522,46 +725,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       );
                     },
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.recipe.title,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF1B4332),
-                    ),
-                  ),
-
-                  // Perfil del Autor (Mockup según Figma)
-                  const SizedBox(height: 20),
-                  const Divider(),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(
-                      radius: 25,
-                      backgroundImage: NetworkImage(
-                        "https://via.placeholder.com/150",
-                      ),
-                    ),
-                    title: const Text(
-                      "Dra. Sarah Jenkins",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: const Text(
-                      "Nutricionista Principal • Receta Premium",
-                    ),
-                    trailing: TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        "SEGUIR",
-                        style: TextStyle(
-                          color: AppColors.nutveSelectionGreen,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Divider(),
 
                   // Stats (Duración, Costo, Dificultad)
                   const SizedBox(height: 20),
@@ -614,7 +777,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     (ing) => _buildIngredientItem(ing),
                   ),
 
-                  // Pasos (Instructions)
                   const SizedBox(height: 40),
                   Text(
                     "Paso a Paso",
@@ -631,45 +793,37 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
                   const SizedBox(height: 100), // Espacio para el botón flotante
                 ],
-              ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    ),
 
-      // Botón START COOKING fijo
-      bottomSheet: Container(
+      // Botón EMPEZAR A COCINAR fijo (Solo si hay sesión)
+      bottomSheet: !AuthController().hasSession()
+          ? null
+          : Container(
         padding: const EdgeInsets.all(20),
         color: isDark
             ? const Color(0xFF1A1A1A).withOpacity(0.95)
             : Colors.white.withOpacity(0.9),
-        child: Obx(
-          () => ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.nutveSelectionGreen,
-              minimumSize: const Size(double.infinity, 60),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.nutveSelectionGreen,
+            minimumSize: const Size(double.infinity, 60),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
             ),
-            onPressed:
-                _cookingController.isValidating.value ||
-                    _cookingController.isCooking.value
-                ? null
-                : _onStartCooking,
-            child:
-                _cookingController.isValidating.value ||
-                    _cookingController.isCooking.value
-                ? const CircularProgressIndicator(color: Colors.black)
-                : const Text(
-                    "¡EMPEZAR A COCINAR!",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
+          ),
+          onPressed: _onStartCooking,
+          child: const Text(
+            "¡EMPEZAR A COCINAR!",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
         ),
       ),
@@ -728,6 +882,71 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGuestLockedContent(bool isDark) {
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.grey.shade200,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.lock_person_rounded,
+                size: 60,
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Contenido Protegido',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Inicia sesión para ver la receta completa, ingredientes, pasos y valor nutricional.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.grey.shade600,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nutveSelectionGreen,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 55),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                ),
+                child: const Text(
+                  "INICIAR SESIÓN",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 40),
+      ],
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ingredient.dart';
+import '../models/ingredient_master.dart';
 
 class PantryService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -9,7 +10,6 @@ class PantryService {
   Future<List<Ingredient>> getIngredients(String userId) async {
     try {
       print('🔵 Cargando ingredientes del usuario con JOIN...');
-      
       // JOIN con la tabla Ingredient para traer el nombre
       final response = await _supabase
           .from(_tableName)
@@ -37,28 +37,23 @@ class PantryService {
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       print('🔵 AGREGANDO ingrediente a Pantry');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
       final currentUser = _supabase.auth.currentUser;
       print('👤 Usuario: ${currentUser?.id}');
-      
       final jsonData = ingredient.toJson();
       print('📦 Datos a insertar:');
       jsonData.forEach((key, value) {
         print('   $key: $value');
       });
-      
       final response = await _supabase
           .from(_tableName)
           .insert(jsonData)
-          .select('*, Ingredient(name)')  
+          .select('*, Ingredient(name)')
           .single();
 
       print('✅ Ingrediente agregado exitosamente');
       print('📥 Respuesta: $response');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
       return Ingredient.fromJson(response);
-      
     } on PostgrestException catch (e) {
       print('❌ PostgrestException:');
       print('   Code: ${e.code}');
@@ -84,7 +79,7 @@ class PantryService {
     }
   }
 
-   /// Eliminar un ingrediente por pantryId
+  /// Eliminar un ingrediente por pantryId
   Future<void> deleteIngredient(String pantryId) async {
     try {
       print('🗑️ Eliminando ingredient_id: $pantryId');
@@ -103,10 +98,7 @@ class PantryService {
   Future<void> deleteAllIngredients(String userId) async {
     try {
       print('🗑️ Eliminando TODOS los ingredientes del usuario: $userId');
-      await _supabase
-          .from(_tableName)
-          .delete()
-          .eq('user_id', userId);
+      await _supabase.from(_tableName).delete().eq('user_id', userId);
       print('✅ Despensa vaciada correctamente');
     } catch (e) {
       print('❌ Error en deleteAll: $e');
@@ -132,6 +124,17 @@ class PantryService {
           .toList();
     } catch (e) {
       throw Exception('Error al buscar: $e');
+    }
+  }
+  /// Fetch all ingredients from the master table
+  Future<List<IngredientMaster>> fetchIngredientMaster() async {
+    try {
+      final response = await _supabase.from('Ingredient').select();
+      return (response as List)
+          .map((item) => IngredientMaster.fromJson(item))
+          .toList();
+    } catch (e) {
+      throw Exception('Error fetching master ingredients: $e');
     }
   }
 }

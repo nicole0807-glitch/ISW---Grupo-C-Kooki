@@ -13,11 +13,14 @@ import '../../services/goal_service.dart';
 import '../../services/recipe_service.dart';
 import '../../utils/app_colors.dart';
 import '../recipe/recipe_detail_screen.dart';
+import '../../controllers/auth_controller.dart';
+import '../../widgets/guest_view_placeholder.dart';
 
 enum _MealSlot { breakfast, lunch, snack, dinner }
 
 class PremiumPlanScreen extends StatefulWidget {
-  const PremiumPlanScreen({super.key});
+  final bool showAppBar;
+  const PremiumPlanScreen({super.key, this.showAppBar = false});
 
   @override
   State<PremiumPlanScreen> createState() => _PremiumPlanScreenState();
@@ -37,6 +40,7 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
   int _targetCalories = 2000;
   bool _loadingPlan = false;
   bool _isChecking = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -48,9 +52,8 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
       if (!mounted) {
         return;
       }
-      if (premium.isPremium) {
-        await _loadGoalAndGenerate();
-      }
+      // Bypassing isPremium check to allow free access as requested by user
+      await _loadGoalAndGenerate();
     });
   }
 
@@ -70,12 +73,14 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
   Future<void> _loadGoalAndGenerate() async {
     if (!mounted || _isChecking) return;
-    setState(() {
-      _loadingPlan = true;
-      _isChecking = true;
-    });
-
     try {
+      if (!mounted) return;
+      setState(() {
+        _loadingPlan = true;
+        _isChecking = true;
+        _errorMessage = null;
+      });
+
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId != null) {
         final goal = await _goalService.getUserGoals(userId);
@@ -89,19 +94,14 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
         const Duration(seconds: 15),
       );
 
-      _generateWeeklyPlan();
+      if (mounted) _generateWeeklyPlan();
     } catch (e) {
       debugPrint('Error en _loadGoalAndGenerate: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar el plan: $e'),
-            action: SnackBarAction(
-              label: 'Reintentar',
-              onPressed: _loadGoalAndGenerate,
-            ),
-          ),
-        );
+        setState(() {
+          _errorMessage =
+              'No pudimos cargar tu plan. Revisa tu conexión a internet.';
+        });
       }
     } finally {
       if (mounted) {
@@ -349,8 +349,33 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     );
   }
 
+  bool _hasPaid = false; // Mock payment status
+
+  void _onMockPay() {
+    setState(() {
+      _hasPaid = true;
+    });
+    _loadGoalAndGenerate();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!AuthController().hasSession()) {
+      return Scaffold(
+        appBar: widget.showAppBar ? _simpleAppBar(context) : null,
+        body: const GuestViewPlaceholder(
+          title: "Planes Nutricionales",
+          description:
+              "Suscríbete por solo \$9.99 al mes para obtener planes personalizados, exportación a PDF y seguimiento avanzado.\n\nInicia sesión para comenzar",
+          icon: Icons.auto_awesome_mosaic_outlined,
+        ),
+      );
+    }
+
+    if (!_hasPaid) {
+      return _buildMockPaymentGate();
+    }
+
     final premium = context.watch<PremiumController>();
 
     final untilText = premium.premiumUntil == null
@@ -359,6 +384,7 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: widget.showAppBar ? _simpleAppBar(context) : null,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -366,12 +392,18 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
           children: [
             _header(premium.isPremium, untilText),
             const SizedBox(height: 16),
-            if (!premium.isPremium) ...[
-              _benefit('Plan semanal automático basado en metas/calorías'),
-              _benefit('Edición y reemplazo manual de comidas'),
-              _benefit('Calendario interactivo con recetas por día'),
+            if (_loadingPlan) ...[
+              const SizedBox(height: 100),
+              const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.nutveDarkGreen,
+                ),
+              ),
               const SizedBox(height: 20),
-              _PaymentFormSection(onSuccess: _loadGoalAndGenerate),
+              const Center(child: Text('Cargando tu plan personalizado...')),
+            ] else if (_errorMessage != null) ...[
+              const SizedBox(height: 60),
+              _buildErrorState(_errorMessage!, _loadGoalAndGenerate),
             ] else ...[
               _plannerControls(context),
               const SizedBox(height: 16),
@@ -379,6 +411,61 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
               const SizedBox(height: 16),
               _dayMeals(context),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message, VoidCallback onRetry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white10 : Colors.grey.shade200,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 48,
+              color: isDark ? Colors.white24 : Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.grey.shade600,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.nutveSelectionGreen,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text(
+                "Intentar de nuevo",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
       ),
@@ -638,19 +725,116 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
     }
   }
 
+  Widget _buildMockPaymentGate() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: widget.showAppBar ? _simpleAppBar(context) : null,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.workspace_premium,
+                      size: 80,
+                      color: Colors.amber,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Plan Premium Kooki',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Obtén acceso a planes nutricionales personalizados, exportación a PDF y más.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 30),
+                    const Divider(),
+                    const SizedBox(height: 20),
+                    Text(
+                      '\$9.99 / mes',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? AppColors.nutveSelectionGreen : AppColors.nutveDarkGreen,
+                          foregroundColor: isDark ? Colors.black : Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: _onMockPay,
+                        child: const Text(
+                          'Pagar Membresía',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Pago ficticio para fines de demostración',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  Widget _benefit(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, color: AppColors.nutveSelectionGreen),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text)),
-        ],
+  PreferredSizeWidget _simpleAppBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: Icon(
+          Icons.arrow_back_ios_new,
+          color: isDark ? Colors.white : Colors.black,
+          size: 20,
+        ),
+        onPressed: () => Navigator.pop(context),
       ),
     );
   }
@@ -658,525 +842,3 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
 // ──────────────────────────────────────────────
 // Realistic Payment Form Widget
-// ──────────────────────────────────────────────
-class _PaymentFormSection extends StatefulWidget {
-  final Future<void> Function() onSuccess;
-  const _PaymentFormSection({required this.onSuccess});
-
-  @override
-  State<_PaymentFormSection> createState() => _PaymentFormSectionState();
-}
-
-class _PaymentFormSectionState extends State<_PaymentFormSection> {
-  final _cardNumberCtrl = TextEditingController(text: '');
-  final _cardNameCtrl = TextEditingController();
-  final _expiryCtrl = TextEditingController();
-  final _cvvCtrl = TextEditingController();
-  bool _isProcessing = false;
-  String _selectedMethod = 'Visa';
-  final List<String> _methods = ['Visa', 'Mastercard', 'AMEX'];
-
-  String get _maskedNumber {
-    final raw = _cardNumberCtrl.text.replaceAll(' ', '');
-    if (raw.isEmpty) return '**** **** **** ****';
-    // Show last 4 digits, mask the rest
-    final padded = raw.padRight(16, '*');
-    final masked = '**** **** **** ${padded.substring(12, 16)}';
-    return masked;
-  }
-
-  void _formatCardNumber(String val) {
-    final digits = val.replaceAll(RegExp(r'\D'), '');
-    final limited = digits.substring(0, digits.length.clamp(0, 16));
-    final formatted = limited.replaceAllMapped(
-      RegExp(r'.{4}'),
-      (m) => '${m.group(0)} ',
-    );
-    if (formatted.trimRight() != val.trimRight()) {
-      _cardNumberCtrl.value = TextEditingValue(
-        text: formatted.trimRight(),
-        selection: TextSelection.collapsed(
-          offset: formatted.trimRight().length,
-        ),
-      );
-    }
-    setState(() {});
-  }
-
-  void _formatExpiry(String val) {
-    final digits = val.replaceAll(RegExp(r'\D'), '');
-    String formatted = digits;
-    if (digits.length > 2) {
-      formatted =
-          '${digits.substring(0, 2)}/${digits.substring(2, digits.length.clamp(0, 4))}';
-    }
-    if (formatted != val) {
-      _expiryCtrl.value = TextEditingValue(
-        text: formatted,
-        selection: TextSelection.collapsed(offset: formatted.length),
-      );
-    }
-    setState(() {});
-  }
-
-  Future<void> _handlePay() async {
-    // Only require name + some number entered (allows fictitious/demo numbers)
-    if (_cardNameCtrl.text.trim().isEmpty ||
-        _cardNumberCtrl.text.replaceAll(' ', '').length < 4) {
-      _showPayError(
-        'Por favor ingresa el número de tarjeta y el nombre del titular.',
-      );
-      return;
-    }
-    if (_expiryCtrl.text.isEmpty) {
-      _showPayError('Ingresa la fecha de vencimiento de tu tarjeta.');
-      return;
-    }
-    if (_cvvCtrl.text.isEmpty) {
-      _showPayError('Ingresa el código de seguridad (CVV).');
-      return;
-    }
-
-    setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-    final premium = context.read<PremiumController>();
-    final success = await premium.subscribeMonthly();
-
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
-
-    if (!success) {
-      _showPayError(premium.lastMessage ?? 'Error al procesar el pago.');
-      return;
-    }
-
-    await widget.onSuccess();
-
-    // Show realistic dialog
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.lock_rounded, color: Color(0xFF1B4332)),
-            SizedBox(width: 8),
-            Text('Pago en Revisión'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Tu solicitud fue registrada correctamente.\n\nLa pasarela de pago estará habilitada muy pronto para completar la transacción de forma segura.',
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 14),
-            Icon(
-              Icons.hourglass_bottom_rounded,
-              size: 40,
-              color: Color(0xFF2D6A4F),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPayError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                msg,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.redAccent.shade400,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Credit Card Preview ──
-        Container(
-          width: double.infinity,
-          height: 195,
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1B4332), Color(0xFF0D6A3B), Color(0xFF0A2E1A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1B4332).withOpacity(0.45),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _selectedMethod,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const Icon(
-                      Icons.wifi_rounded,
-                      color: Colors.white54,
-                      size: 24,
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  _maskedNumber,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2.5,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'TITULAR',
-                          style: TextStyle(color: Colors.white38, fontSize: 10),
-                        ),
-                        Text(
-                          _cardNameCtrl.text.isEmpty
-                              ? 'NOMBRE APELLIDO'
-                              : _cardNameCtrl.text.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'VENCE',
-                          style: TextStyle(color: Colors.white38, fontSize: 10),
-                        ),
-                        Text(
-                          _expiryCtrl.text.isEmpty ? 'MM/AA' : _expiryCtrl.text,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // ── Price summary ──
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF1B4332).withOpacity(0.2)
-                : const Color(0xFFE8F5E9),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDark
-                  ? AppColors.nutveSelectionGreen.withOpacity(0.3)
-                  : Colors.green.shade200,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Plan Premium mensual',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.lock_rounded, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    'USD 9.99',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 17,
-                      color: isDark
-                          ? AppColors.nutveSelectionGreen
-                          : const Color(0xFF1B4332),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        // ── Payment method selector ──
-        Text(
-          'Tarjeta de pago',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: _methods.map((m) {
-            final sel = _selectedMethod == m;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedMethod = m),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: sel ? const Color(0xFF1B4332) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: sel
-                          ? const Color(0xFF1B4332)
-                          : (isDark ? Colors.white24 : Colors.grey.shade300),
-                    ),
-                  ),
-                  child: Text(
-                    m,
-                    style: TextStyle(
-                      color: sel
-                          ? Colors.white
-                          : (isDark ? Colors.white60 : Colors.black54),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-
-        // ── Card Number ──
-        _payField(
-          'Número de tarjeta',
-          _cardNumberCtrl,
-          hint: '1234 5678 9012 3456',
-          icon: Icons.credit_card_rounded,
-          isDark: isDark,
-          onChanged: _formatCardNumber,
-          keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 12),
-        _payField(
-          'Titular de la tarjeta',
-          _cardNameCtrl,
-          hint: 'Nombre como aparece en la tarjeta',
-          icon: Icons.person_rounded,
-          isDark: isDark,
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _payField(
-                'Vencimiento',
-                _expiryCtrl,
-                hint: 'MM/AA',
-                icon: Icons.calendar_today_rounded,
-                isDark: isDark,
-                onChanged: _formatExpiry,
-                keyboardType: TextInputType.number,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _payField(
-                'CVV',
-                _cvvCtrl,
-                hint: '•••',
-                icon: Icons.lock_outline_rounded,
-                isDark: isDark,
-                onChanged: (_) {},
-                keyboardType: TextInputType.number,
-                obscure: true,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // ── Pay Button ──
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B4332),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 6,
-            ),
-            onPressed: _isProcessing ? null : _handlePay,
-            child: _isProcessing
-                ? const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text('Procesando...'),
-                    ],
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.lock_rounded, size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Pagar USD 9.99',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.verified_user_rounded,
-              size: 14,
-              color: Colors.grey,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'Pago seguro con cifrado SSL de 256 bits',
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-      ],
-    );
-  }
-
-  Widget _payField(
-    String label,
-    TextEditingController ctrl, {
-    required String hint,
-    required IconData icon,
-    required bool isDark,
-    required void Function(String) onChanged,
-    TextInputType? keyboardType,
-    bool obscure = false,
-  }) {
-    return TextField(
-      controller: ctrl,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      onChanged: onChanged,
-      style: TextStyle(
-        color: isDark ? Colors.white : Colors.black87,
-        fontSize: 15,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF2D6A4F)),
-        filled: true,
-        fillColor: isDark
-            ? Colors.white.withOpacity(0.06)
-            : Colors.grey.shade50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.grey.shade200,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.grey.shade200,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF2D6A4F), width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-      ),
-    );
-  }
-}

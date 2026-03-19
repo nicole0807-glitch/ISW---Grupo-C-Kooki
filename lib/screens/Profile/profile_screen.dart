@@ -1,17 +1,16 @@
 // ignore_for_file: unused_local_variable, unused_element
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:kooki/screens/Profile/diet_preferences_screen.dart';
 import 'package:kooki/screens/Profile/personal_info_screen.dart';
-import 'package:kooki/services/supabase_service.dart';
 // Necesario para limpiar el estado
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 import '../../controllers/goal_controller.dart';
 import '../../controllers/premium_controller.dart';
 import '../auth/login_screen.dart';
+import '../auth/welcome_screen.dart';
 import '../../services/profile_service.dart';
 import '../goals/goal_registration_screen.dart';
 import '../recipe/widgets/macro_chart_widget.dart';
@@ -25,6 +24,7 @@ import '../../controllers/theme_controller.dart';
 import 'saved_recipes_screen.dart';
 import '../../utils/app_colors.dart';
 import '../home/main_layout.dart';
+import '../../widgets/guest_view_placeholder.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -36,59 +36,30 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
   final ProfileService _profileService = ProfileService();
+  late Future<Map<String, dynamic>?> _profileFuture;
+  late Future<List<dynamic>> _savedRecipesFuture;
 
   @override
   void initState() {
     super.initState();
     // Prepare future for FutureBuilder
     _profileFuture = _profileService.getProfileData();
+    _loadSavedRecipes();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PremiumController>().loadStatus();
     });
   }
 
-  // --- CARGA DE DATOS ---
-
-  Future<void> _pickAndUploadAvatar() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 50,
-    );
-
-    if (pickedFile == null) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final bytes = await pickedFile.readAsBytes();
-      final error = await _profileService.updateAvatar(bytes);
-
-      if (error == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("¡Foto de perfil actualizada!")),
-        );
-        // Recargar datos
-        setState(() {
-          _profileFuture = _profileService.getProfileData();
-        });
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $error"), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  void _loadSavedRecipes() {
+    setState(() {
+      _savedRecipesFuture = Future.wait([
+        RecipeService().fetchRecipes(),
+        RecipeService().fetchCommunityRecipes(),
+      ]);
+    });
   }
 
+  // --- CARGA DE DATOS ---
   // MÉTODO PARA REINICIAR / REFRESCAR DATOS (HU-27)
   Future<void> _refreshGoals(BuildContext context) async {
     await Navigator.push(
@@ -114,15 +85,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await authController.logout();
       homeController.clearStatus();
 
-      // 1. Ejecutar logout en Supabase
-      context.read<HomeController>().clearStatus();
-
-      // 2. Sign out de Supabase
-      final supabaseService = SupabaseService();
-      await supabaseService.signOut();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
           (route) => false,
         );
       }
@@ -136,45 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  //Variables de sesión
-  /*
-  String? _userName;
-  String? _avatarURL;
-  */
 
-  //Instancia del backen de profile
-  late Future<Map<String, dynamic>?> _profileFuture;
-  // final ProfileService _profileService = ProfileService();
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _profileFuture = _profileService.getProfileData();
-  // }
-
-  /*
-  //Función para cargar los datos del usuario
-  Future<void> _loadUserData() async {
-    //Si no hay usuario logueado no se ejecuta
-    if (!_profileService.isUserLoggedIn) {
-      setState(() {
-      _userName = "Desarrollador Test";
-      _avatarURL = "https://i.pravatar.cc/300"; // Una imagen aleatoria de internet
-      });
-      return;
-    }
-    
-    //Si hay usuario registrado se obtienen sus datos
-    final data = await _profileService.getProfileData();
-    
-    if (data != null && mounted) {
-      //Se asignan los datos a las variables:
-      _userName = data['username'] ?? 'Usuario';
-      _avatarURL = data['avatar_url'];
-    }
-    
-  }
-  */
 
   // --- DISEÑO CIERRE DE SESIÓN ---
   void _showLogoutDialog(BuildContext context) {
@@ -234,6 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : Colors.white,
         body: Consumer<GoalController>(
           builder: (context, goalController, _) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             if (_isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -266,41 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             if (goalController.currentGoal == null)
                               _buildSetupButton(() => _refreshGoals(context)),
 
-                            // Botón de información personal
-                            _buildMenuButton(
-                              text: "Información Personal",
-                              icon: Icons.person,
-                              baseColor: Colors.blueAccent,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const PersonalInfoScreen(),
-                                  ),
-                                ).then((_) {
-                                  //Se recarga la página cuando el usuario vuelva
-                                  setState(() {
-                                    _profileFuture = _profileService
-                                        .getProfileData();
-                                  });
-                                });
-                              },
-                            ),
 
-                            const SizedBox(height: 10),
-                            _buildMenuButton(
-                              text: context.watch<ThemeController>().isDarkMode
-                                  ? "Modo Claro"
-                                  : "Modo Oscuro",
-                              icon: context.watch<ThemeController>().isDarkMode
-                                  ? Icons.light_mode
-                                  : Icons.dark_mode,
-                              baseColor: Colors.orangeAccent,
-                              onTap: () {
-                                context.read<ThemeController>().toggleTheme();
-                              },
-                            ),
 
                             const SizedBox(height: 25),
                             _buildSectionHeader(
@@ -339,33 +233,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               },
                             ),
 
-                            // OPCIONES DE CONFIGURACIÓN
-                            const Text(
-                              "Configuración",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            _buildSectionHeader(
+                              title: "Configuración",
+                              onAction: null,
                             ),
-                            const SizedBox(height: 15),
+                            const SizedBox(height: 10),
+
+                            // Botón de información personal
+                            _buildMenuButton(
+                              text: "Información Personal",
+                              icon: Icons.person,
+                              baseColor: Colors.blueAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const PersonalInfoScreen(),
+                                  ),
+                                ).then((_) {
+                                  //Se recarga la página cuando el usuario vuelva
+                                  setState(() {
+                                    _profileFuture = _profileService
+                                        .getProfileData();
+                                  });
+                                });
+                              },
+                            ),
                             _buildMenuButton(
                               text: "Gestionar Suscripción",
                               icon: Icons.star_outline,
                               baseColor: Colors.green,
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const PremiumPlanScreen(),
-                                  ),
-                                );
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PremiumPlanScreen(showAppBar: true),
+                                    ),
+                                  );
                               },
                             ),
-
+                            _buildMenuButton(
+                              text: context.watch<ThemeController>().isDarkMode
+                                  ? "Modo Claro"
+                                  : "Modo Oscuro",
+                              icon: context.watch<ThemeController>().isDarkMode
+                                  ? Icons.light_mode
+                                  : Icons.dark_mode,
+                              baseColor: Colors.orangeAccent,
+                              onTap: () {
+                                context.read<ThemeController>().toggleTheme();
+                              },
+                            ),
+                            
                             _buildMenuButton(
                               text: "Gestión de Tutorial",
                               icon: Icons.help_outline_rounded,
-                              baseColor: AppColors.nutveDarkGreen,
+                              baseColor: isDark 
+                                  ? AppColors.nutveSelectionGreen 
+                                  : AppColors.nutveDarkGreen,
                               onTap: () {
                                 // Trigger the tour in MainLayout
                                 context
@@ -439,32 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? const Icon(Icons.person, size: 50, color: Colors.grey)
                       : null,
                 ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: _pickAndUploadAvatar,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF13EC5B),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.edit,
-                        size: 18,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
+
               ],
             ),
             const SizedBox(height: 16),
@@ -484,7 +386,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSectionHeader({
     required String title,
-    required VoidCallback onAction,
+    VoidCallback? onAction,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -493,10 +395,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        IconButton(
-          icon: const Icon(Icons.settings_outlined, color: Colors.blueAccent),
-          onPressed: onAction,
-        ),
+        if (onAction != null)
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.blueAccent),
+            onPressed: onAction,
+          ),
       ],
     );
   }
@@ -550,22 +453,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    "Renovación Automática",
-                    style: TextStyle(fontWeight: FontWeight.w500),
+            if (active) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      "Renovación Automática",
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ),
-                ),
-                Switch(
-                  value: premium.autoRenewEnabled,
-                  onChanged: (value) =>
-                      context.read<PremiumController>().setAutoRenew(value),
-                ),
-              ],
-            ),
+                  Switch(
+                    value: premium.autoRenewEnabled,
+                    onChanged: (value) =>
+                        context.read<PremiumController>().setAutoRenew(value),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -577,7 +482,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.only(top: 15),
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFF13EC5B), width: 1.5),
+          side: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.nutveSelectionGreen
+                : const Color(0xFF13EC5B),
+            width: 1.5,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -627,7 +537,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListTile(
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+        contentPadding: const EdgeInsets.only(left: 12, right: 16, top: 4, bottom: 4),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -681,50 +591,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
   Widget _buildGuestView(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.account_circle_outlined,
-                size: 100,
-                color: Colors.grey.shade300,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Guarda tus recetas favoritas y gestiona tu despensa personalizando tu perfil.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54, fontSize: 16),
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF13EC5B),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: const StadiumBorder(),
-                  ),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  ),
-                  child: const Text(
-                    "Iniciar Sesión",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return const Scaffold(
+      body: GuestViewPlaceholder(
+        title: "Tu Perfil",
+        description:
+            "Guarda tus recetas favoritas y gestiona tu despensa personalizando tu perfil.",
       ),
     );
   }
@@ -751,10 +623,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return FutureBuilder<List<dynamic>>(
-      future: Future.wait([
-        RecipeService().fetchRecipes(),
-        RecipeService().fetchCommunityRecipes(),
-      ]),
+      future: _savedRecipesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
@@ -762,6 +631,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Error al cargar recetas",
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  TextButton.icon(
+                    onPressed: _loadSavedRecipes,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text(
+                      "Reintentar",
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.nutveSelectionGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         if (!snapshot.hasData) return const SizedBox();
 
         final allRecipes = snapshot.data![0] as List<Recipe>;
@@ -789,7 +687,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (favorites.isFavorite(ur.id)) {
             // Mapeo completo para que al abrir la receta se vea todo
             final r = Recipe(
-              id: ur.id.hashCode,
+              id: ur.id,
               title: ur.title,
               imageUrl: ur.imageUrl,
               rating: ur.avgRating,

@@ -29,7 +29,7 @@ class RecipeService {
           .toList();
     } catch (e) {
       print('Error fetching community: $e');
-      return [];
+      rethrow;
     }
   }
 
@@ -44,7 +44,7 @@ class RecipeService {
             fileName,
             imageBytes,
             fileOptions: const FileOptions(
-              contentType: 'image/jpeg',
+              contentType: 'image/webp',
               upsert: true,
             ),
           );

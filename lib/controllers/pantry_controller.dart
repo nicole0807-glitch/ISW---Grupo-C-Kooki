@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/ingredient.dart';
 import '../services/pantry_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/app_colors.dart';
 
 class PantryController extends GetxController {
   final PantryService _pantryService = PantryService();
 
-  var allIngredients = <Ingredient>[];
-  var filteredIngredients = <Ingredient>[];
+  var allIngredients = <Ingredient>[].obs;
+  var filteredIngredients = <Ingredient>[].obs;
   var isLoading = false.obs;
   var selectedCategory = 'Todos los ingredientes'.obs;
   var searchQuery = ''.obs;
@@ -25,30 +26,60 @@ class PantryController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    loadIngredients();
+    // Listen to Auth State changes to load ingredients as soon as user is ready
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      if (event == AuthChangeEvent.signedIn ||
+          event == AuthChangeEvent.tokenRefreshed) {
+        print(
+          'PantryController: Auth change detected ($event). Loading ingredients...',
+        );
+        loadIngredients(showError: false);
+      }
+    });
+
+    loadIngredients(showError: false);
   }
 
   String? get userId => Supabase.instance.client.auth.currentUser?.id;
 
   /// Cargar todos los ingredientes
-  Future<void> loadIngredients() async {
+  Future<void> loadIngredients({bool showError = true}) async {
     if (userId == null) return;
 
     try {
       isLoading.value = true;
-      allIngredients = await _pantryService.getIngredients(userId!);
+      allIngredients.assignAll(await _pantryService.getIngredients(userId!));
       applyFilters();
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      debugPrint('Error loading ingredients: $e');
+      if (showError) _handleError(e);
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void _handleError(dynamic e) {
+    String message = e.toString();
+    if (message.contains('SocketException') ||
+        message.contains('ClientException') ||
+        message.contains('Network') ||
+        message.contains('Failed host lookup')) {
+      message = 'Error de conexión. Verifica tu internet.';
+    } else {
+      message = 'No se pudo completar la operación.';
+    }
+
+    Get.snackbar(
+      'Aviso',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.nutveSelectionGreen.withOpacity(0.9),
+      colorText: Colors.white,
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(10),
+      borderRadius: 8,
+    );
   }
 
   /// Add new ingredient
@@ -71,13 +102,7 @@ class PantryController extends GetxController {
       );
       return true;
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _handleError(e);
       return false;
     } finally {
       isLoading.value = false;
@@ -103,7 +128,7 @@ class PantryController extends GetxController {
       );
       return true;
     } catch (e) {
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.BOTTOM);
+      _handleError(e);
       return false;
     } finally {
       isLoading.value = false;
@@ -142,23 +167,23 @@ class PantryController extends GetxController {
 
   /// Apply filters
   void applyFilters() {
-    filteredIngredients = allIngredients.where((ingredient) {
-      // Category filter
-      final categoryMatch =
-          selectedCategory.value == 'Todos los ingredientes' ||
-          ingredient.category == selectedCategory.value;
+    filteredIngredients.assignAll(
+      allIngredients.where((ingredient) {
+        // Category filter
+        final categoryMatch =
+            selectedCategory.value == 'Todos los ingredientes' ||
+            ingredient.category == selectedCategory.value;
 
-      // Search filter (ahora busca en displayName)
-      final searchMatch =
-          searchQuery.value.isEmpty ||
-          ingredient.displayName.toLowerCase().contains(
-            searchQuery.value.toLowerCase(),
-          );
+        // Search filter (ahora busca en displayName)
+        final searchMatch =
+            searchQuery.value.isEmpty ||
+            ingredient.displayName.toLowerCase().contains(
+              searchQuery.value.toLowerCase(),
+            );
 
-      return categoryMatch && searchMatch;
-    }).toList();
-
-    update();
+        return categoryMatch && searchMatch;
+      }).toList(),
+    );
   }
 
   /// Get total count
@@ -205,10 +230,9 @@ class PantryController extends GetxController {
 
       // Limpiar lista local
       allIngredients.clear();
-      filteredIngredients.clear();
       selectedCategory.value = 'Todos los ingredientes';
       searchQuery.value = '';
-      update();
+      applyFilters();
 
       Get.snackbar(
         'Éxito',
@@ -218,13 +242,7 @@ class PantryController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _handleError(e);
     } finally {
       isLoading.value = false;
     }

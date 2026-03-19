@@ -245,4 +245,20 @@ class ProfileService {
       return e.toString();
     }
   }
+
+  // --- MI PERFIL: ACTUALIZAR URL DE FOTO ---
+  Future<String?> updateAvatarUrl(String url) async {
+    try {
+      final userID = currentUser?.id;
+      if (userID == null) return "No hay sesión activa";
+
+      await _supabase
+          .from('Profile')
+          .update({'avatar_url': url}).eq('user_id', userID);
+
+      return null; // Éxito
+    } catch (e) {
+      return e.toString();
+    }
+  }
 }

@@ -6,6 +6,7 @@ import '../../controllers/adminDashboardController.dart';
 import '../recipe/admin_recipes_screen.dart';
 import '../../services/admin_service.dart';
 import 'admin_users_screen.dart';
+import 'admin_reports_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -401,7 +402,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Colors.orange,
         ),
         const SizedBox(width: 16),
-        _buildStatCard("Usuarios", "Looading..", Icons.people, Colors.blue),
+        _buildStatCard(
+          "Usuarios",
+          _controller.activeUsers,
+          Icons.people,
+          Colors.blue,
+        ),
       ],
     );
   }
@@ -536,7 +542,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           "Revisar denuncias pendientes",
           Icons.verified_user_rounded,
           [Colors.orange, Colors.deepOrange],
-          () {},
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminReportsScreen(),
+              ),
+            );
+          },
         ),
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 32),

@@ -6,8 +6,32 @@ import 'package:kooki/models/recipe_model.dart';
 import 'package:kooki/models/user_recipe_model.dart';
 import 'package:kooki/screens/recipe/widgets/recipe_card.dart';
 
-class SavedRecipesScreen extends StatelessWidget {
+import 'package:kooki/utils/app_colors.dart';
+
+class SavedRecipesScreen extends StatefulWidget {
   const SavedRecipesScreen({super.key});
+
+  @override
+  State<SavedRecipesScreen> createState() => _SavedRecipesScreenState();
+}
+
+class _SavedRecipesScreenState extends State<SavedRecipesScreen> {
+  late Future<List<dynamic>> _dataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() {
+    setState(() {
+      _dataFuture = Future.wait([
+        RecipeService().fetchRecipes(),
+        RecipeService().fetchCommunityRecipes(),
+      ]);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +76,7 @@ class SavedRecipesScreen extends StatelessWidget {
               ),
             )
           : FutureBuilder<List<dynamic>>(
-              future: Future.wait([
-                RecipeService().fetchRecipes(),
-                RecipeService().fetchCommunityRecipes(),
-              ]),
+              future: _dataFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -63,9 +84,9 @@ class SavedRecipesScreen extends StatelessWidget {
 
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text(
-                      "Error al cargar las recetas",
-                      style: TextStyle(color: Colors.red.shade400),
+                    child: _buildErrorState(
+                      "No pudimos cargar tus recetas guardadas.",
+                      _loadData,
                     ),
                   );
                 }
@@ -89,7 +110,7 @@ class SavedRecipesScreen extends StatelessWidget {
                   if (favorites.isFavorite(ur.id)) {
                     savedRecipes.add(
                       Recipe(
-                        id: ur.id.hashCode,
+                        id: ur.id,
                         title: ur.title,
                         imageUrl: ur.imageUrl,
                         rating: ur.avgRating,
@@ -126,24 +147,14 @@ class SavedRecipesScreen extends StatelessWidget {
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio:
-                              0.65, // Ajustar según el ratio del RecipeCard
+                          childAspectRatio: 0.65,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
                     itemCount: savedRecipes.length,
                     itemBuilder: (context, index) {
-                      // El RecipeCard ya tiene un margen derecho y bottom por defecto
-                      // Podemos envolverlo en MediaQuery o FractionallySizedBox si fuera necesario
-                      // pero el GridView forza el tamaño del hijo.
-                      // Quitamos el margin derecho del card pasándole un flag si es necesario,
-                      // o usamos un wrapper. El card original tiene margin a la derecha fijo,
-                      // para el grid lo compensamos.
                       return Transform.translate(
-                        offset: const Offset(
-                          10,
-                          0,
-                        ), // Ajuste por el margen derecho del card original
+                        offset: const Offset(10, 0),
                         child: RecipeCard(recipe: savedRecipes[index]),
                       );
                     },
@@ -151,6 +162,58 @@ class SavedRecipesScreen extends StatelessWidget {
                 );
               },
             ),
+    );
+  }
+  Widget _buildErrorState(String message, VoidCallback onRetry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: isDark ? Colors.white24 : Colors.grey.shade300,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.grey.shade600,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.nutveSelectionGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            label: const Text(
+              "Intentar de nuevo",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
