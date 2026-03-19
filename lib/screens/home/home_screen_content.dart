@@ -238,22 +238,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                 ),
                 const SizedBox(height: 20),
               ],
-<<<<<<< HEAD
-              _buildSearchBar(),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children:[
-                  _filterChip('Todas', HomeRecipeFilter.all),
-                  _filterChip('Más valoradas', HomeRecipeFilter.topRated),
-                  _filterChip('Snacks rápidos', HomeRecipeFilter.quickBites),
-                  _filterChip('Favoritas', HomeRecipeFilter.favorites),
-                ],
-              ),
-              
-=======
->>>>>>> origin/Naldo2
               const SizedBox(height: 25),
               
               FutureBuilder<List<Recipe>>(
@@ -422,15 +406,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             width: 250,
             margin: const EdgeInsets.only(right: 15, bottom: 15, top: 5),
             decoration: BoxDecoration(
-<<<<<<< HEAD
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow:[
-=======
               color: cardBg,
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
->>>>>>> origin/Naldo2
                 BoxShadow(
                   color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
                   blurRadius: 15,
@@ -440,20 +418,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-<<<<<<< HEAD
-              children:[
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.network(
-                    recipe.imageUrl,
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 140,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.broken_image),
-=======
               mainAxisSize: MainAxisSize.min,
               children: [
                 Stack(
@@ -476,7 +440,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                           ),
                         ),
                       ),
->>>>>>> origin/Naldo2
                     ),
                     if (recipe.avgRating >= 4.5)
                       Positioned(
@@ -541,10 +504,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       ),
                       const SizedBox(height: 4),
                       Row(
-<<<<<<< HEAD
-                        children:[
-                          const Icon(Icons.person, size: 14, color: AppColors.nutveDarkGreen),
-=======
                         children: [
                           Icon(
                             Icons.person,
@@ -553,7 +512,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                                 ? AppColors.nutveSelectionGreen
                                 : AppColors.nutveDarkGreen,
                           ),
->>>>>>> origin/Naldo2
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -571,15 +529,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                       ),
                       const SizedBox(height: 12), // Reduced spacing
                       Row(
-<<<<<<< HEAD
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children:[
-                          _buildSmallTag(Icons.access_time_filled, recipe.duration),
-                          _buildSmallTag(
-                            Icons.star_rounded,
-                            recipe.avgRating.toStringAsFixed(1),
-                            color: Colors.orange,
-=======
                         children: [
                           Icon(
                             Icons.access_time_rounded,
@@ -627,7 +576,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
                                 ),
                               ],
                             ),
->>>>>>> origin/Naldo2
                           ),
                         ],
                       ),
@@ -728,49 +676,9 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   Widget _buildHeroBanner() {
     return Container(
       width: double.infinity,
-<<<<<<< HEAD
-      padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(
-        color: AppColors.nutveDarkGreen,
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children:[
-          const Text(
-            'Desbloquea tu \nPotencial',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 15),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.nutveDarkGreen,
-            ),
-            onPressed: () {},
-            child: const Text(
-              'MEJORAR PLAN',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow:[
-=======
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
->>>>>>> origin/Naldo2
           BoxShadow(
             color: AppColors.nutveSelectionGreen.withOpacity(0.3),
             blurRadius: 25,
@@ -951,21 +859,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-<<<<<<< HEAD
-      children:[
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children:[
-            Text(
-              'Comunidad kooki',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Inspírate con otros usuarios',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-          ],
-=======
       children: [
         Builder(
           builder: (ctx) {
@@ -991,7 +884,6 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
               ],
             );
           },
->>>>>>> origin/Naldo2
         ),
         if (canPublishCommunity)
           IconButton(
