@@ -1,0 +1,69 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../../utils/app_colors.dart';
+import '../../../controllers/pantry_controller.dart';
+
+class CategoryChips extends StatefulWidget {
+  const CategoryChips({super.key});
+
+  @override
+  State<CategoryChips> createState() => _CategoryChipsState();
+}
+
+class _CategoryChipsState extends State<CategoryChips> {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final chipBg = isDark ? Colors.white.withOpacity(0.07) : Colors.white;
+    final controller = Get.find<PantryController>();
+
+    return Container(
+      color: bgColor,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: SizedBox(
+        height: 40,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: controller.categories.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final category = controller.categories[index];
+            return Obx(() {
+              // Guard: evitar rebuild si el widget ya no está montado
+              if (!mounted) return const SizedBox.shrink();
+
+              final isSelected = controller.selectedCategory.value == category;
+              return ChoiceChip(
+                label: Text(category),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (!mounted) return;
+                  if (selected) {
+                    controller.setCategory(category);
+                  }
+                },
+                backgroundColor: chipBg,
+                selectedColor: AppColors.nutveSelectionGreen,
+                labelStyle: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : (isDark ? Colors.white70 : Colors.black),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.nutveSelectionGreen
+                      : (isDark ? Colors.white24 : Colors.grey[300]!),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              );
+            });
+          },
+        ),
+      ),
+    );
+  }
+}
