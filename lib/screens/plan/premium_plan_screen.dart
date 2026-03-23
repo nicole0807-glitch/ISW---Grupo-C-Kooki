@@ -604,7 +604,7 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
                   labelStyle: TextStyle(
                     color: _selectedPaymentMethod == method
                         ? Colors.black
-                        : Colors.white,
+                        : Colors.black,
                     fontWeight: FontWeight.w600,
                   ),
                   side: BorderSide(
