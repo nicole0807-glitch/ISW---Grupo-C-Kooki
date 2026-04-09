@@ -11,11 +11,16 @@ class GoalRegistrationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => GoalController(),
+      create: (_) => GoalController()..loadExistingGoals(),
       child: Scaffold(
         appBar: AppBar(title: const Text("Registro de Metas")),
         body: Consumer<GoalController>(
           builder: (context, controller, child) {
+            // Mostrar spinner mientras carga los datos iniciales
+            if (controller.isLoading && controller.ageCtrl.text.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Form(

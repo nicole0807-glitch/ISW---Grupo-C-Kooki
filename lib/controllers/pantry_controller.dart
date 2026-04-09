@@ -53,6 +53,10 @@ class PantryController extends GetxController {
 
     try {
       isLoading.value = true;
+      
+      // Limpieza silenciosa de ingredientes expirados (más de 7 días)
+      await _pantryService.deleteOldExpiredIngredients(userId!);
+
       allIngredients.assignAll(await _pantryService.getIngredients(userId!));
       applyFilters();
     } catch (e) {
@@ -92,22 +96,61 @@ class PantryController extends GetxController {
   Future<bool> addIngredient(Ingredient ingredient) async {
     try {
       isLoading.value = true;
-      final newIngredient = await _pantryService.addIngredient(ingredient);
-      allIngredients.insert(0, newIngredient);
-      applyFilters();
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Get.snackbar(
-          'Éxito', // ← Este mensaje debería aparecer
-          'Ingrediente agregado correctamente',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: const Color(0xFF4CAF50),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-          margin: const EdgeInsets.all(10),
-          borderRadius: 8,
-        );
-      });
+      // 1. Detectar si esto es una sustitución por caducidad
+      final existingIndex = allIngredients.indexWhere(
+        (i) => i.ingredientMasterId == ingredient.ingredientMasterId && i.isExpired
+      );
+      final isReplacement = existingIndex != -1;
+
+      // 2. Insertar en BDD (El Trigger de Supabase borrará silenciosamente el viejo)
+      final newIngredient = await _pantryService.addIngredient(ingredient);
+
+      // 3. UI y Efectos Visuales
+      if (isReplacement) {
+        // Remueve el expirado antiguo para no tener duplicado visual
+        allIngredients.removeAt(existingIndex);
+        
+        // Simulación rápida de refresh para "flashear" la lista
+        isLoading.value = false;
+        await Future.delayed(const Duration(milliseconds: 50));
+        isLoading.value = true;
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        allIngredients.insert(0, newIngredient);
+        applyFilters();
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Get.snackbar(
+            '🔄 Sustitución Automática',
+            'Hemos reemplazado tu ingrediente vencido por uno fresco',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.blueAccent,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
+            margin: const EdgeInsets.all(10),
+            borderRadius: 8,
+          );
+        });
+      } else {
+        // Inserción normal
+        allIngredients.insert(0, newIngredient);
+        applyFilters();
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Get.snackbar(
+            'Éxito',
+            'Ingrediente agregado correctamente',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: const Color(0xFF4CAF50),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2),
+            margin: const EdgeInsets.all(10),
+            borderRadius: 8,
+          );
+        });
+      }
+
       return true;
     } catch (e) {
       _handleError(e);

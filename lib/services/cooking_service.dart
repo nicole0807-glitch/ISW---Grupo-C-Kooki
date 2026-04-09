@@ -51,10 +51,10 @@ class CookingService {
         .select('ingredient_id, amount, unit_abbreviation, Ingredient(name)')
         .eq('recipe_id', recipeId);
 
-    // 2. Traer despensa del usuario
+    // 2. Traer despensa del usuario, agregando expiration_date para validar
     final pantryRaw = await _supabase
         .from('Pantry')
-        .select('ingredient_id, quantity, unit')
+        .select('ingredient_id, quantity, unit, expiration_date')
         .eq('user_id', userId);
 
     // Indexar despensa por ingredient_id para acceso O(1)
@@ -82,10 +82,21 @@ class CookingService {
 
       double available = 0.0;
       if (pantryRow != null) {
-        available = toBase(
-          (pantryRow['quantity'] as num).toDouble(),
-          pantryRow['unit'] as String? ?? 'g',
-        );
+        bool isExpired = false;
+        final expDateStr = pantryRow['expiration_date'] as String?;
+        if (expDateStr != null) {
+          final expDate = DateTime.parse(expDateStr);
+          if (expDate.isBefore(DateTime.now())) {
+            isExpired = true;
+          }
+        }
+
+        if (!isExpired) {
+          available = toBase(
+            (pantryRow['quantity'] as num).toDouble(),
+            pantryRow['unit'] as String? ?? 'g',
+          );
+        }
       }
 
       if (available < required) {

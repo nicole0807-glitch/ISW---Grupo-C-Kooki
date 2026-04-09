@@ -126,7 +126,6 @@ class PantryService {
       throw Exception('Error al buscar: $e');
     }
   }
-  /// Fetch all ingredients from the master table
   Future<List<IngredientMaster>> fetchIngredientMaster() async {
     try {
       final response = await _supabase.from('Ingredient').select();
@@ -135,6 +134,21 @@ class PantryService {
           .toList();
     } catch (e) {
       throw Exception('Error fetching master ingredients: $e');
+    }
+  }
+
+  /// Elimina silenciosamente ingredientes caducados hace más de 7 días
+  Future<void> deleteOldExpiredIngredients(String userId) async {
+    try {
+      final threshold = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
+      await _supabase
+          .from(_tableName)
+          .delete()
+          .eq('user_id', userId)
+          .lt('expiration_date', threshold);
+      print('✅ Limpieza silenciosa de ingredientes expirados ejecutada');
+    } catch (e) {
+      print('⚠️ Fallo silencioso en eliminación de expirados: $e');
     }
   }
 }
